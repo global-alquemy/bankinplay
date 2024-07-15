@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record model="ir.ui.view" id="bankinplay_view_company_form">
+        <field name="name">bankinplay.view.company.form</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form" />
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page name="bankinplay" string="BankInPlay">
+                    <group>
+                        <group name="bankinplay" string="BankInPlay Config">
+                            <field name="bankinplay_apikey"/>
+                            <field name="bankinplay_apisecret"/>
+                            <field name="bankinplay_company_id" readonly="1"></field>
+                            <field name="bankinplay_analytic_plan_id" readonly="1"></field>
+                            <field name="bankinplay_analytic_line_id" readonly="1"></field>
+
+
+                            <button name="test_bankinplay_connection" type="object" string="Test Connection" icon="fa-television"/>
+                        </group>
+                        <group>
+                            <separator string="Plan contable"></separator>
+                            <field name="bankinplay_manage_third_accounts"/>
+                            <br/>
+                            <button name="export_account_plan" type="object" string="Export Account Plan" icon="fa-television"/>
+                            <button name="export_analytic_plan" type="object" string="Export Analytic Plan" icon="fa-television"/>
+                            <button name="bankinplay_export_contacts" type="object" string="Export Contacts" icon="fa-television"/>
+                            <button name="bankinplay_export_documents" type="object" string="Export Documents" icon="fa-television"/>
+                            <button name="bankinplay_import_account_moves" type="object" string="Import Account Moves" icon="fa-television"/>
+                            <button name="bankinplay_export_account_move_line" type="object" string="Exportar Apuntes contables" icon="fa-television"/>
+
+
+                            <!-- <button name="propagate_api_password_accounts" type="object" string="Propagate Api Passwords Accounts" icon="fa-television"/> -->
+                            <!-- <button name="test_bankinplay_connection_accounts" type="object" string="Test Connection Accounts" icon="fa-television"/> -->
+
+                        </group>
+
+                        <group name="cron" string="Cron">
+                            <field name="bankinplay_contacts_cron"/>
+                            <field name="bankinplay_account_plan_cron"/>
+                            <field name="bankinplay_analytic_plan_cron"/>
+                            <field name="bankinplay_account_move_cron"></field>
+                        </group>
+
+                    </group>
+                </page>
+            </notebook>
+
+        </field>
+    </record>
+
+</odoo>
