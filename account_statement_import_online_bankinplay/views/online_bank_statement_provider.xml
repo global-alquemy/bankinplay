@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record model="ir.ui.view" id="bankinplay_bank_statement_provider_form">
+        <field name="name">bankingplay.bank.statement.provider.form</field>
+        <field name="model">online.bank.statement.provider</field>
+        <field name="inherit_id" ref="account_statement_import_online.online_bank_statement_provider_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='main']" position="inside">
+                <group name="bankinplay" string="BankInPlay Config" attrs="{'invisible':[('service','!=','bankinplay')]}">
+                    <field name="username" string="Api Key" />
+                    <field name="password" string="Secret Key" />
+                    <field name="bankinplay_date_field" />
+                    <field name="bankinplay_import_type" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
