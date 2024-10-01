@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="process_export_third_documents" model="ir.cron">
+        <field name="name">Bankinplay: Export third documents</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_export_documents_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="process_bankinplay_export_account_move_line" model="ir.cron">
+        <field name="name">Bankinplay: Export conciliate moves</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_export_account_move_line_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="process_bankinplay_export_analytic_plan" model="ir.cron">
+        <field name="name">Bankinplay: Export analytic plan</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_export_analytic_plan_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="process_bankinplay_export_account_plan" model="ir.cron">
+        <field name="name">Bankinplay: Export account plan</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_export_account_plan_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+
+   
+
+    <record id="process_bankinplay_import_account_moves" model="ir.cron">
+        <field name="name">Bankinplay: Import account moves</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_import_account_moves_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="process_bankinplay_import_documents" model="ir.cron">
+        <field name="name">Bankinplay: Import third documents</field>
+        <field name="model_id" ref="model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">model.bankinplay_import_documents_cron()</field>
+        <field name='interval_type'>days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="False"/>
+    </record>
+    
+
+</odoo>

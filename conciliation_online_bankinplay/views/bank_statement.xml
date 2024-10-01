@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_account_move_tree_inherit" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <field name="state" position="after">
+                <field name="bankinplay_sent" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_bank_statement_form_inherit" model="ir.ui.view">
+        <field name="name">bank.statement.form.inherit</field>
+        <field name="model">account.bank.statement</field>
+        <field name="inherit_id" ref="account.view_bank_statement_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='line_ids']//tree/field[@name='account_number']" position="after">
+                <field name="bankinplay_conciliation" optional="hidden"/>
+                <field name="bankinplay_sent" optional="hidden"/>
+            </xpath>
+
+        </field>
+    </record>
+
+
+</odoo>

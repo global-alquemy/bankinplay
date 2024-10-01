@@ -1,4 +1,5 @@
-# Copyright 2024 Global Alquemy SL
+# Copyright 2020 Florent de Labarre
+# Copyright 2022-2023 Therp BV <https://therp.nl>.
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import json
 import logging
@@ -17,6 +18,16 @@ _logger = logging.getLogger(__name__)
 class ResCompany(models.Model):
     _inherit = "res.company"
 
+    bankinplay_enabled = fields.Boolean(
+        string="BankInPlay Enabled",
+        help="Enable BankInPlay Integration.",
+    )
+
+    bankinplay_start_date = fields.Date(
+        string="BankInPlay Start Date",
+        help="Banking Play Init Date.",
+    )
+
     bankinplay_apikey = fields.Char(
         string="Api Key",
         help="Key for BankInPlay API access.",
@@ -25,11 +36,6 @@ class ResCompany(models.Model):
     bankinplay_apisecret = fields.Char(
         string="Api Secret",
         help="Secret for BankInPlay API access.",
-    )
-
-    bankinplay_manage_third_accounts = fields.Boolean(
-        string="Manage Third Party Accounts",
-        help="Use generic accounts for BankInPlay.",
     )
 
     bankinplay_company_id = fields.Char(
@@ -47,29 +53,31 @@ class ResCompany(models.Model):
         help="Analytic Line ID for BankInPlay.",
     )
 
-    bankinplay_contacts_cron = fields.Boolean( 
-        string="Export Contacts Cron",
-        help="Export Contacts to BankInPlay",
+    bankinplay_manage_third_accounts = fields.Boolean(
+        string="Manage Third Party Accounts",
+        help="Use generic accounts for BankInPlay.",
     )
 
-    bankinplay_account_plan_cron = fields.Boolean( 
-        string="Export Account Plan Cron",
-        help="Export Account Plan to BankInPlay",
+    bankinplay_journal_ids = fields.Many2many(
+        'account.journal',
+        'bankinplay_journal_rel',
+        'company_id',
+        'journal_id',
+        string='Journals',
+        help='Journals to export to BankInPlay',
     )
 
-    bankinplay_account_move_cron = fields.Boolean(  
-        string="Export Account Moves Cron",
-        help="Export Account Moves to BankInPlay",
+    bankinplay_last_syncdate = fields.Date(
+        string="Last Sync Date",
+        help="Last Sync Date.",
     )
 
-    bankinplay_analytic_plan_cron = fields.Boolean( 
-        string="Export Analytic Plan Cron",
-        help="Export Analytic Plan to BankInPlay",
-    )
 
     def check_bankinplay_connection(self):
         if not self.bankinplay_apikey or not self.bankinplay_apisecret:
             raise UserError(_("Please provide both the API Key and the API Secret."))
+        if not self.bankinplay_start_date:
+            raise UserError(_("Please provide the Banking Play Start Date."))
         interface_model = self.env["bankinplay.interface"]
         access_data = interface_model._login(self.bankinplay_apikey, self.bankinplay_apisecret)
         if not access_data:
@@ -136,7 +144,8 @@ class ResCompany(models.Model):
     def export_account_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_account_plan(access_data)
+        
+        data = interface_model._export_account_plan(access_data, self.bankinplay_start_date)
         title = _("Export Succeded!")
         message = _("Account plan has been exported successfully.")
         return {
@@ -158,17 +167,64 @@ class ResCompany(models.Model):
     def bankinplay_export_documents(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_documents(access_data)
+        data = interface_model._export_documents(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
         return data
+    
+    def bankinplay_import_documents(self):
+        access_data = self.check_bankinplay_connection()
+        interface_model = self.env["bankinplay.interface"]
+        data = interface_model._import_conciliate_documents(access_data)
+        if data.get('sociedades'):
+            for conciliation in data.get('sociedades')[0].get('documentos'):
+                statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
+                if statement_line and not statement_line.is_reconciled:
+                    journal_id = statement_line.journal_id
+                    cuenta_bancaria = conciliation.get('cuenta_bancaria')
+                    number = (cuenta_bancaria + '-'
+                        + str(journal_id.id)
+                        + "-"
+                        + str(conciliation.get('id_movimiento'))
+                    )
+                    if statement_line.unique_import_id == number:
+                        
+                        statement_line.line_ids.remove_move_reconcile()
+                        statement_line.payment_ids.unlink() 
 
+                        line_vals = []
 
+                        payable_account_type = self.env.ref("account.data_account_type_payable")
+                        receivable_account_type = self.env.ref("account.data_account_type_receivable")
+
+                        counterparts = []
+                        move_id = int(conciliation.get('id_documento_erp'))
+                        if move_id:
+                            move = self.env['account.move'].search([('id', '=', move_id), ('state', '=', 'posted')], limit=1)
+                            if move:
+                                for line in move.line_ids:
+                                    if line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+                                        counterparts.append({
+                                            'name': line.name,
+                                            'credit': line.debit,
+                                            'debit': line.credit,
+                                            'move_line': line,
+                                        })
+                       
+                                moves = statement_line.process_reconciliation(
+                                    counterparts,
+                                    [],
+                                    []
+                                )
+
+                                #move.bankinplay_send_move()
+
+                        
+        return data
 
     def bankinplay_import_account_moves(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         data = interface_model._import_account_moves(access_data)
-        #data = '{"results": {"sociedades": [{"cif": "F72880792", "cod_contable": "BROTICS", "nombre": "BROTICS S.MICROCOOP. DE C-LM", "pais": "ES"}], "asientos": [{"descripcion": "#FR46ZZZ005002 NN982442535DGFIP2024050129LSK6HUI8 #229030020700127249256 #B2B DGFIP # TAXSTVA-062024-3310CA3  REFERENCIA ADEUDO A SUCARG NUMDOCUMENTO 0000000000", "divisa": "EUR", "apuntes": [{"no_apunte": 1, "cuenta_contable": "626000", "debe_haber": "D", "importe": 278}, {"no_apunte": 2, "cuenta_contable": "572002", "debe_haber": "H", "importe": 278}], "no_asiento": 1, "cuenta_bancaria": "ES8001822857190201704590", "banco": "BBVAESMM", "sociedad_cod_erp": "BROTICS", "fecha_asiento": "2024-06-23T22:00:00Z", "fecha_operacion": "2024-06-23T22:00:00Z", "movimiento_id": 177019659, "pdfBancario": "https://app.bankinplay.com/intradia/consultaMovimientos/detalle?origen=cierre&_id=177019659&token=77c73e0c-93fc-4eae-bd26-bf2ec568f91e"}], "request_code": "b46305c5-c510-4b3a-a2ae-deef877f190f"}, "timestamp": "2024-06-25T22:43:41.483Z"}'
-        data = json.loads(data)
+
         for asiento in data.get('results').get('asientos'):
             statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(asiento.get('movimiento_id')) in x.unique_import_id)
             if statement_line and not statement_line.is_reconciled:
@@ -184,21 +240,48 @@ class ResCompany(models.Model):
                     statement_line.line_ids.remove_move_reconcile()
                     statement_line.payment_ids.unlink() 
 
-                    line_vals = []
-
-                    account_account = False
+                    new_line_vals = []
 
                     for apunte in asiento.get('apuntes'):
                         if apunte.get('cuenta_contable') != journal_id.default_account_id.code:
-                            account_account = apunte.get('cuenta_contable')
+                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable'))], limit=1)
+                            if not account_account:
+                               raise UserError(_("Account %s not found in the system." % apunte.get('cuenta_contable')))
+                            
+                            credit = 0
+                            debit = 0
+                            if apunte.get('debe_haber') == 'D':
+                                credit = apunte.get('importe')
+                            else:
+                                debit = apunte.get('importe')
 
-                    if account_account:
-                        account_account_id = self.env['account.account'].search([('code', '=', account_account)], limit=1)
-                        if account_account_id:
-                            statement_line.with_context(force_delete=True).write({
-                                'to_check': False,
-                                'line_ids': [(5, 0)] + [(0, 0, line_vals) for line_vals in statement_line._prepare_move_line_default_vals(account_account_id.id)],
+                            analytic_account_id = False
+                            if apunte.get('analitica'):
+                                for analitica in apunte.get('analitica'):
+                                    for desglose in analitica.get('desglose'):
+                                        account_analytic = self.env['account.analytic.account'].search([('name', '=', desglose.get('codigo_analitico'))], limit=1)
+                                        if not account_analytic:
+                                            raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
+                                        )
+                                        analytic_account_id = account_analytic.id
+                                        
+                            
+                            new_line_vals.append({
+                                'name': asiento.get('descripcion'),
+                                'credit': debit,
+                                'debit': credit,
+                                'account_id': account_account.id,
+                                'analytic_account_id': analytic_account_id
+                                
                             })
+
+                    moves = statement_line.process_reconciliation(
+                            [],
+                            [],
+                            new_line_vals
+                    )
+
+                    statement_line.write({'bankinplay_conciliation': True})
 
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()
@@ -224,9 +307,43 @@ class ResCompany(models.Model):
             }
         }
     
-
-    def bankinplay_export_account_move_line(self):
+    def bankinplay_export_account_move_line(self):  
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         data = interface_model._export_account_move_lines(access_data)
         return data
+
+
+    #CRON
+    
+    def bankinplay_export_account_plan_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.export_account_plan()
+
+    def bankinplay_export_analytic_plan_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.export_analytic_plan()
+
+    def bankinplay_export_documents_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.bankinplay_export_documents()
+    
+    def bankinplay_import_documents_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.bankinplay_import_documents()
+
+    def bankinplay_import_account_moves_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.bankinplay_import_account_moves()
+
+    def bankinplay_export_account_move_line_cron(self):
+        company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        for company in company_ids:
+            company.bankinplay_export_account_move_line()
+        
+    

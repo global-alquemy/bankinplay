@@ -1,6 +1,6 @@
-# Copyright 2024 - Global Alquemy SL
+# Copyright 2020 Florent de Labarre
+# Copyright 2022-2023 Therp BV <https://therp.nl>.
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-
 import json
 import logging
 import re
@@ -25,7 +25,6 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         default="close"
     )
 
-    
 
     bankinplay_date_field = fields.Selection(
         [
