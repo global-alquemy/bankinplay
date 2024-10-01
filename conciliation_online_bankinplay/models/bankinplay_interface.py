@@ -1,5 +1,6 @@
-# Copyright 2024 Global Alquemy SL
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
+# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import base64
 import json
@@ -46,12 +47,12 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_request(access_data, url, {})
         return data
     
-    def _export_account_plan(self, access_data):
+    def _export_account_plan(self, access_data, start_date):
         
         url = BANKINPLAY_ENDPOINT_V1 + "/planContableApi/plan_contable"
         company_id = self.env.company
 
-        first_day_of_year = datetime(datetime.now().year, 1, 1).strftime("%d/%m/%Y")
+        date = start_date.strftime("%d/%m/%Y")
         account = self.env['account.account'].search([], limit=1)
         
 
@@ -70,7 +71,7 @@ class BankinPlayInterface(models.AbstractModel):
             "planes": [{
                 "codigo": "PC" + company_id.vat.replace('ES', ''),
                 "nombre": "Plan contable - " + company_id.name,
-                "fechaInicio": first_day_of_year,
+                "fechaInicio": date,
                 "pais": company_id.country_id.code,
                 "numeroDigitosCuentasContables": str(code_size),
                 "gestionarCCTerceros": "S" if company_id.bankinplay_manage_third_accounts else "N",
@@ -116,7 +117,7 @@ class BankinPlayInterface(models.AbstractModel):
         if not statusCode == 200:
             raise UserError('No se ha podido enlazar el plan contable')
 
-
+    # CONTACTOS
 
     def _export_contact(self, access_data, partner_id):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
@@ -213,63 +214,21 @@ class BankinPlayInterface(models.AbstractModel):
         
         return data
     
+    # DOCUMENTOS TERCEROS
 
-    def _export_documents(self, access_data):    
+    def _export_documents(self, access_data, start_date, journal_ids):    
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = self.env.company
         
-        ids = [25967, 25968, 25969]
-        supplier_ids = [25978, 25979, 25986]
-
-        document_ids = self.env['account.move'].search([('id', 'in', ids)], limit=10)
-        documents = []
-        for d in document_ids:
-
-            document = {
-                "id_documento_erp": str(d.id),
-                "sociedad_cif": company_id.vat.replace('ES', ''),
-                "tipo_documento_codigo": "FV",
-                "fecha_emision": d.invoice_date.strftime("%d/%m/%Y"),
-                "fecha_vencimiento": d.invoice_date_due.strftime("%d/%m/%Y"),
-                "fecha_emision_remesa": None,
-                "fecha_cobro": None,
-                "no_documento": d.name,
-                "no_remesa": None,
-                "importe_total": d.amount_total_signed,
-                "importe_pendiente": d.amount_residual_signed,
-                "importe_impuestos": d.amount_tax_signed,
-                "divisa": "EUR",
-                "estado_codigo": "COBRADO" if d.payment_state == 'paid' else "PDTE",
-                "nif_tercero": d.partner_id.vat.replace('ES', ''),
-                "referencias": [d.ref] if d.ref else []
-            }
-            documents.append(document)
+        document_ids = self.env['account.move'].search([('invoice_date', '>', start_date), ('state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)])
         
+        for document in document_ids:
+            name_job = "[BANKINPLAY] - FACTURA " + document.name
+            document.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_send_move()
+       
 
-        params = {
-            "documentos": documents,
-        }
+        return document_ids
         
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
-        
-        return data
-
     def _export_document(self, access_data, move_id):
 
         account_move_id = self.env['account.move'].search([('id', '=', move_id)], limit=1)
@@ -281,11 +240,25 @@ class BankinPlayInterface(models.AbstractModel):
         
         document_ids = self.env['account.move'].search([('id', '=', move_id)], limit=1)
         documents = []
+        
+        
         for d in document_ids:
+            estado_pago = "COBRADO" if d.payment_state == 'paid' else "PDTE",
+            tipo_documento_codigo = "FV"
+            if d.move_type == 'out_refund':
+                tipo_documento_codigo = "AC"
+                estado_pago = "COBRADO" if d.payment_state == 'paid' else "PDTE"
+            elif d.move_type == 'in_invoice':
+                tipo_documento_codigo = "FC"
+                estado_pago = "PAGADO" if d.payment_state == 'paid' else "PDTE",
+            elif d.move_type == 'in_refund':
+                tipo_documento_codigo = "AP"
+                estado_pago = "COBRADO" if d.payment_state == 'paid' else "PDTE",
+
             document = {
                 "id_documento_erp": str(d.id),
                 "sociedad_cif": company_id.vat.replace('ES', ''),
-                "tipo_documento_codigo": "FV",
+                "tipo_documento_codigo": tipo_documento_codigo,
                 "fecha_emision": d.invoice_date.strftime("%d/%m/%Y"),
                 "fecha_vencimiento": d.invoice_date_due.strftime("%d/%m/%Y"),
                 "fecha_emision_remesa": None,
@@ -296,7 +269,7 @@ class BankinPlayInterface(models.AbstractModel):
                 "importe_pendiente": d.amount_residual_signed,
                 "importe_impuestos": d.amount_tax_signed,
                 "divisa": "EUR",
-                "estado_codigo": "COBRADO" if d.payment_state == 'paid' else "PDTE",
+                "estado_codigo": estado_pago,
                 "nif_tercero": d.partner_id.vat.replace('ES', ''),
                 "referencias": [d.ref] if d.ref else []
             }
@@ -326,6 +299,47 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_request(access_data, url, params)
         
         return data
+    
+    def _cancel_document(self, access_data, move_id):
+
+        account_move_id = self.env['account.move'].search([('id', '=', move_id)], limit=1)
+
+        url_get_document = BANKINPLAY_ENDPOINT_V1 + "/sociedades/" + account_move_id.company_id.vat.replace('ES', '') + "/documentos-terceros/" + str(account_move_id.id)
+
+        params = {
+        
+        }
+
+        document_data = self._get_request(access_data, url_get_document, params)
+
+        if isinstance(document_data, int):    
+            
+            url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros/anular/" + str(document_data)
+        
+            data = self._delete_request(access_data, url, {}, json.dumps(params))
+            responseId = data.get('responseId', '')
+            if not responseId:
+                raise UserError('No se ha podido anular el documento en bankinplay')
+            
+            if data.get('statusCode', 400) != 200:
+                raise UserError('No se ha podido anular el documento en bankinplay')
+
+        
+        else:
+            if document_data.get('errors', False):
+                raise UserError("BANKINPLAY: \n" + document_data.get('errors')[0]['description'])
+        
+    def _delete_request(self, access_data, url, params, data=None):
+        """Interact with Ponto to get next page of data."""
+        headers = self._get_request_headers(access_data)
+
+        _logger.info(
+            _("`POST` request to %s with headers %s and params %s"), url, headers, params
+        )
+        response = requests.delete(url, params=params, headers=headers, data=data)
+        return self._get_response_data(response, access_data)
+    
+    # PLAN ANALÍTICO
     
     def _create_analytic_plan(self, access_data):
         
@@ -387,16 +401,22 @@ class BankinPlayInterface(models.AbstractModel):
         return data
 
 
+    # CONCILIACIÓN
     def _import_conciliate_documents(self, access_data):    
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = self.env.company
 
         params = {
-            "fechaHasta": "31/12/2024",
             "sociedades": [company_id.bankinplay_company_id],
             "deshabilitar_callback": True,
             "exportados": True
         }
+
+        if company_id.bankinplay_last_syncdate:
+            params['fecha_conciliacion_desde'] = (company_id.bankinplay_last_syncdate - relativedelta(days=1)).strftime("%d/%m/%Y")
+        else:
+            params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime("%d/%m/%Y")
+            
         
         data = self._post_request(access_data, url, {}, json.dumps(params))
         responseId = data.get('responseId', '')
@@ -415,19 +435,18 @@ class BankinPlayInterface(models.AbstractModel):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
         data = self._get_request(access_data, url, params)
+
+        company_id.bankinplay_last_syncdate = datetime.today()
         
         return data
-
 
     def _import_account_moves(self, access_data):    
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
         company_id = self.env.company
-
         params = {
-            "fechaHasta": "31/12/2024",
+            "fechaHasta" : (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
-            "deshabilitar_callback": True,
-            "exportados": True
+            "deshabilitar_callback": True
         }
         
         data = self._post_request(access_data, url, {}, json.dumps(params))
@@ -454,7 +473,7 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"
         company_id = self.env.company
 
-        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True)]).filtered(lambda x: x.unique_import_id and x.date.strftime("%Y/%m/%d") >= '2024/06/01')
+        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True)]).filtered(lambda x: x.unique_import_id and x.date >= company_id.bankinplay_start_date and not x.bankinplay_sent)
         account_move_lines = []
         for st in statement_line_ids:
             movimiento_id = st.unique_import_id.split('-')[-1]
@@ -480,5 +499,8 @@ class BankinPlayInterface(models.AbstractModel):
         }
 
         data = self._post_request(access_data, url, {}, json.dumps(params))
+
+        for st in statement_line_ids:
+            st.bankinplay_sent = True
 
         return data

@@ -1,5 +1,6 @@
-# Copyright 2024 - Global Alquemy SL
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
+# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import base64
 import json
@@ -189,6 +190,8 @@ class BankinPlayInterface(models.AbstractModel):
                     data = data.get('resultados')
                 elif data.get('planes_contables', False):
                     data = data.get('planes_contables')
+                elif data.get('documento_tercero_id', False):
+                    data = data.get('documento_tercero_id')
                 else:
                     return data
             key = access_data["user"].ljust(16, '$')[:16]

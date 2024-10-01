@@ -1,6 +1,6 @@
-# Copyright 2024 - Global Alquemy SL
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-
+# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
+# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 import json
 import logging
 import re
@@ -25,7 +25,6 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         default="close"
     )
 
-    
 
     bankinplay_date_field = fields.Selection(
         [
