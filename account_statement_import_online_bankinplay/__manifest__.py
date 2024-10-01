@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# 2022 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
-# 2022 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
+# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
+# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 {
     "name": "Online Conciliation: BankInPlay",
