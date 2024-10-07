@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Online Bank Statements: BankInPlay</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        img {
+            border: 1px solid #ccc;
+            padding: 5px;
+            background-color: #f9f9f9;
+        }
+        ul {
+            list-style-type: none;
+        }
+        ul li::before {
+            content: "• ";
+            color: #2c3e50;
+        }
+        ol {
+            margin-left: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            font-size: 90%;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Online Bank Statements: BankInPlay</h1>
+
+<p>Este módulo proporciona extractos bancarios en línea de Bankinplay.</p>
+
+<!-- Tabla de Contenidos -->
+<h2>Tabla de Contenidos</h2>
+<ul>
+    <li><a href="#configuracion">Configuración</a></li>
+    <li><a href="#uso">Uso</a></li>
+</ul>
+
+<!-- Configuración -->
+<h2 id="configuracion">Configuración</h2>
+
+<p>Para configurar el proveedor de extractos bancarios en línea:</p>
+
+<!-- Inserta una captura de pantalla aquí -->
+<img src="/configuracion_diario.png" alt="Configuración de la cuenta bancaria" style="display:block; margin:auto; width:80%;">
+
+<ol>
+    <li>Ve a <em>Facturación &gt; Vista General</em>.</li>
+    <li>Abre la configuración de la cuenta del diario correspondiente.</li>
+    <li>Cambia a la pestaña <strong>Cuenta Bancaria</strong>.</li>
+    <li>Establece <strong>Conexión Bancaria</strong> en <strong>En línea</strong>.</li>
+    <li>Selecciona <strong>Bankinplay</strong> como proveedor de extractos bancarios en línea en la sección <strong>Extractos Bancarios en Línea (OCA)</strong>.</li>
+    <li>Guarda la cuenta bancaria.</li>
+    <li>Haz clic en el proveedor y configura los ajustes específicos del mismo.</li>
+</ol>
+
+<!-- Inserta otra captura de pantalla si es necesario -->
+<img src="/configuracion_bankinplay.png" alt="Configuración del proveedor" style="display:block; margin:auto; width:80%;">
+
+<p>Para obtener <strong>Login</strong> y <strong>Key</strong>:</p>
+
+<ol>
+    <li>Abre <a href="https://bankinplay.com/" target="_blank">Bankinplay</a>.</li>
+</ol>
+
+<p>Consulta también las instrucciones de configuración de <code>account_bank_statement_import_online</code> para más información.</p>
+
+<!-- Uso -->
+<h2 id="uso">Uso</h2>
+
+<p>Para obtener extractos bancarios históricos:</p>
+
+<ol>
+    <li>Ve a <em>Facturación &gt; Configuración &gt; Cuentas Bancarias</em>.</li>
+    <li>Selecciona las cuentas bancarias específicas.</li>
+    <li>Inicia <em>Acciones &gt; Asistente de Importación de Extractos Bancarios en Línea</em>.</li>
+    <li>Configura el intervalo de fechas y haz clic en <strong>Importar</strong>.</li>
+</ol>
+
+<p>Si no necesitas datos históricos, simplemente espera a que se ejecute la actividad programada "<strong>Importar Extractos Bancarios en Línea</strong>" para obtener nuevas transacciones.</p>
+
+</body>
+</html>
