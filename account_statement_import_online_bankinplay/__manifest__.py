@@ -3,7 +3,7 @@
 # 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 {
-    "name": "Online Conciliation: BankInPlay",
+    "name": "Online Bank Statements: BankInPlay",
     "version": "15.0.2.0.0",
     "category": "Account",
     "author": "Alquemy",
