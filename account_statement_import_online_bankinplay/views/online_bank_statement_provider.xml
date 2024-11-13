@@ -11,6 +11,8 @@
                     <field name="password" string="Secret Key" />
                     <field name="bankinplay_date_field" />
                     <field name="bankinplay_import_type" />
+                    <field name="bankinplay_is_card" />
+                    <field name="bankinplay_card_number" attrs="{'invisible':[('bankinplay_is_card','=',False)]}"/>
                 </group>
             </xpath>
         </field>

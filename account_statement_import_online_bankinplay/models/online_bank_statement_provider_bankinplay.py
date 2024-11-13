@@ -1,6 +1,6 @@
-# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
-# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+# Copyright 2020 Florent de Labarre
+# Copyright 2022-2023 Therp BV <https://therp.nl>.
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import json
 import logging
 import re
@@ -38,6 +38,16 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         "on a provider that already has transactions, you will have to "
         "purge the BankInPlay buffers.",
     )
+
+    bankinplay_is_card = fields.Boolean(
+        string='¿Es tarjeta?',
+    )
+    
+    bankinplay_card_number = fields.Char(
+        string='Número de tarjeta',
+    )
+    
+    
 
     @api.model
     def _get_available_services(self):
@@ -83,9 +93,18 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         lines = []
         interface_model = self.env["bankinplay.interface"]
         access_data = interface_model._login(self.username, self.password)
-        access_data = interface_model._set_access_account(access_data, self.account_number)
+
+
+        if self.bankinplay_is_card:
+            if self.bankinplay_card_number:
+                access_data = interface_model._set_access_card(access_data, self.bankinplay_card_number)
+        elif self.account_number:
+            access_data = interface_model._set_access_account(access_data, self.account_number)
         
-        if self.bankinplay_import_type == "intraday":
+        
+        if self.bankinplay_is_card:
+            transactions = interface_model._get_card_transactions(access_data, date_since, date_until)
+        elif self.bankinplay_import_type == "intraday":
             transactions = interface_model._get_transactions(access_data, date_since, date_until)
         else:
             transactions = interface_model._get_closing_transactions(access_data, date_since, date_until)
@@ -95,7 +114,10 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
 
     def _bankinplay_get_transaction_vals(self, transaction, sequence):
         """Translate information from BankInPlay to statement line vals."""
-
+        
+        if self.bankinplay_is_card:
+            return self._bankinplay_get_card_transaction_vals(transaction, sequence)
+        
         side = -1 if transaction["signo"] == "Pago" else 1
         date = self._bankinplay_get_transaction_datetime(transaction)
         vals_line = {
@@ -107,6 +129,24 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
             "transaction_type": transaction["instrumento"],
             "narration": transaction["notas"],
             "amount": transaction["importeAbsoluto"] * side,
+        }
+        return vals_line
+    
+    def _bankinplay_get_card_transaction_vals(self, transaction, sequence):
+        """Translate information from BankInPlay to statement line vals."""
+        datetime_str = transaction.get("fecha")
+        date = self._bankinplay_datetime_from_string(datetime_str)
+
+        side = -1 if transaction["signo"] == "pago" else 1
+        vals_line = {
+            "sequence": sequence,
+            "date": date,
+            "ref": '/',
+            "payment_ref": transaction["descripcion"],
+            "unique_import_id": str(transaction["id"]),
+            "transaction_type": '',
+            "narration": transaction["notas"],
+            "amount": transaction["importe"] * side,
         }
         return vals_line
 

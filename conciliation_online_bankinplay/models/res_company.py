@@ -120,7 +120,7 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         
         check_company = False
-        get_companies = interface_model._get_sociedades(access_data)
+        get_companies = interface_model._get_companies(access_data)
         for company in get_companies:
             if company['nif'] == self.vat.replace('ES', ''): 
                 check_company = True
