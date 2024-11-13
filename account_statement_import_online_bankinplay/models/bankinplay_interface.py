@@ -30,6 +30,13 @@ class BankinPlayInterface(models.AbstractModel):
     _name = "bankinplay.interface"
     _description = "Interface to all interactions with Bankinplay API"
 
+    def _get_companies(self, access_data):
+        """Get companies from bankingplay."""
+        url = BANKINPLAY_ENDPOINT_V2 + "/entidad/sociedades"
+        
+        data = self._get_request(access_data, url, {})
+        return data
+
     def _login(self, username, password):
         """BamkInPlay login returns an access dictionary for further requests."""
         url = BANKINPLAY_ENDPOINT + "/clienteApi/jwt_token"
@@ -87,6 +94,40 @@ class BankinPlayInterface(models.AbstractModel):
             _("BankInPlay : wrong configuration, account %s not found in %s")
             % (account_number, data)
         )
+    
+    def _set_access_card(self, access_data, account_number):
+        """Set bankinplay account for bank card in access_data."""
+        url = BANKINPLAY_ENDPOINT_V2 + "/entidad/tarjeta"
+        _logger.info(_("GET request on %s"), url)
+        response = requests.get(
+            url, params={}, headers=self._get_request_headers(access_data)
+        )
+        data = self._get_response_data(response, access_data)
+        for bankinplay_account in data:
+            bankinplay_card_number = sanitize_account_number(
+                bankinplay_account.get("num_tarjeta", {})
+            )
+            check_company = False
+            if bankinplay_card_number == account_number:
+                get_companies = self._get_companies(access_data)
+                for company in get_companies:
+                    if company['nif'] == bankinplay_account.get("cif_sociedad", ''):
+                        check_company = True
+                        access_data["bankinplay_company_card"] = company.get("id")
+                        break
+
+                if not check_company:
+                    raise UserError(
+                        _("BankInPlay : wrong configuration, company %s not found in %s")
+                        % (self.vat, get_companies)
+                    )
+                
+                return access_data
+        # If we get here, we did not find Ponto account for bank account.
+        raise UserError(
+            _("BankInPlay : wrong configuration, account %s not found in %s")
+            % (account_number, data)
+        )
 
     def _get_transactions(self, access_data, date_since, date_until):
         """Get transactions from bankingplay, using last_identifier as pointer.
@@ -125,6 +166,44 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_request(access_data, url, params)
         transactions = self._get_transactions_from_data(data)
         return transactions
+    
+    def _get_card_transactions(self, access_data, date_since, date_until):
+        """Get transactions from bankingplay, using last_identifier as pointer.
+
+        Note that Ponto has the transactions in descending order. The first
+        transaction, retrieved by not passing an identifier, is the latest
+        present in Ponto. If you read transactions 'after' a certain identifier
+        (Ponto id), you will get transactions with an earlier date.
+        """
+        url = BANKINPLAY_ENDPOINT_V1 + "/movimientoTarjetaApi/lectura_tarjeta"
+        
+        params = {
+            "exportados": True,
+            "deshabilitar_callback": True,
+            "fechaDesde": date_since.strftime("%d/%m/%Y"),
+            "fechaHasta": date_until.strftime("%d/%m/%Y"),
+            "sociedades": [access_data.get("bankinplay_company_card")] if access_data.get("bankinplay_company_card", False) else []
+        }
+        
+        data = self._post_request(access_data, url, params)
+        responseId = data.get('responseId', '')
+        if not responseId:
+            raise UserError('No se han podido traer las transacciones')
+        
+        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
+        data = self._get_request(access_data, url, params)
+        
+        while data['estado'] != 'procesado':
+            data = self._get_request(access_data, url, params)
+            estado = data.get('estado', '')
+            if estado == 'erroneo':
+                raise UserError('Error en la solicitud de transacciones')
+            time.sleep(2)
+
+        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
+        data = self._get_request(access_data, url, params)
+        transactions = self._get_transactions_from_data(data)
+        return transactions
 
     def _get_transactions_from_data(self, data):
         """Get all transactions that are in the ponto response data."""
@@ -135,6 +214,9 @@ class BankinPlayInterface(models.AbstractModel):
                 data,
             )
         else:
+            movimientos = transactions.get("movimientos", [])
+            if movimientos:
+                transactions = movimientos
             _logger.info(
                 _("%d transactions present in response data"),
                 len(transactions),
