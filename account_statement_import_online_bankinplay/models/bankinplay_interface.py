@@ -1,6 +1,6 @@
-# Copyright 2020 Florent de Labarre
-# Copyright 2022 Therp BV <https://therp.nl>.
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+# 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
+# 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import base64
 import json
