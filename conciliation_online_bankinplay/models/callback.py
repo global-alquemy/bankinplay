@@ -12,3 +12,9 @@ class CallbackController(http.Controller):
         params = request.env['ir.config_parameter'].sudo()
         _logger.info("Callback estado: %s", kw)
         return {}
+    
+    @http.route('/webhook/lectura_intradia', auth='public')
+    def callback_estado(self, **kw):
+        params = request.env['ir.config_parameter'].sudo()
+        _logger.info("Callback estado: %s", kw)
+        return {}
