@@ -8,7 +8,7 @@
             <button name="test_bankinplay_connection" position="after">
                 <field name="bankinplay_enabled" readonly="0"></field>
                 <field name="bankinplay_start_date"/>
-                <field name="bankinplay_partner_domain" widget="domain" options="{'model': 'res_partner', 'in_dialog': True}"/>
+                <field name="bankinplay_partner_domain" widget="domain" options="{'model': 'res.partner', 'in_dialog': True}"/>
                 <field name="bankinplay_journal_ids" widget="many2many_tags"/>
             </button>
             <group name="bankinplay" position="after">
