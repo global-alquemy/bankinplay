@@ -117,19 +117,48 @@ class BankinPlayInterface(models.AbstractModel):
         if not statusCode == 200:
             raise UserError('No se ha podido enlazar el plan contable')
 
+    
     # CONTACTOS
 
-    def _export_contact(self, access_data, partner_id):
+    def _export_contacts(self, access_data, domain=[]):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
         company_id = self.env.company
         
-        contact_ids = self.env['res.partner'].search([('id', '=', partner_id)], limit=1)
+        contact_ids = self.env['res.partner'].search(domain, limit=1)
         contacts = []
         for c in contact_ids:
+            configuracion_contable = []
+            if c.is_customer:
+                configuracion_contable.append({
+                    "sociedad_cif": company_id.vat.replace('ES', ''),
+                    "tipo_tercero": "C",
+                    "estado": "A",
+                    "cuenta_contable": c.property_account_receivable_id.code,
+                    "codigo_tercero": c.id
+                })
+
+            if c.is_supplier:
+                configuracion_contable.append({
+                    "sociedad_cif": company_id.vat.replace('ES', ''),
+                    "tipo_tercero": "P",
+                    "estado": "A",
+                    "cuenta_contable": c.property_account_payable_id.code,
+                    "codigo_tercero": c.id
+                })
+            
+            if c.employee:
+                configuracion_contable.append({
+                    "sociedad_cif": company_id.vat.replace('ES', ''),
+                    "tipo_tercero": "E",
+                    "estado": "A",
+                    "cuenta_contable": c.property_account_receivable_id.code,
+                    "codigo_tercero": c.id
+                })
+
             contact = {
                 "nif": c.vat.replace('ES', ''),
                 "nombre": c.name,
-                "alias": c.comercial,
+                "alias": c.comercial if c.comercial else '',
                 "pais": c.country_id.code,
                 "domicilio": c.street,
                 "provincia": c.state_id.name,
@@ -137,9 +166,10 @@ class BankinPlayInterface(models.AbstractModel):
                 "codigo_postal": c.zip,
                 "administracion_email": c.email or '',
                 "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
-                "tipo_persona": "J" if c.company_type == 'company' else "F",
-                
+                "configuracion_contable": configuracion_contable
             }
+            
+            
             contacts.append(contact)
         
 
@@ -147,71 +177,15 @@ class BankinPlayInterface(models.AbstractModel):
             "terceros": contacts,
         }
         
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, {}, json.dumps(params)))
         
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
+        for tercero in data.get('terceros', []):
+            if tercero.get('estado', 'Incorrecto') == 'correcto':
+                partner = self.env['res.partner'].search([('vat', '=', tercero['nif'])], limit=1)
+                if partner:
+                    partner.bankinplay_sent = True
+                    partner.bankinplay_update = False
 
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
-        
-        return data
-
-    def _export_contacts(self, access_data):
-        url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
-        company_id = self.env.company
-        
-        contact_ids = self.env['res.partner'].search([('id', '=', 60)], limit=1)
-        contacts = []
-        for c in contact_ids:
-            contact = {
-                "nif": c.vat.replace('ES', ''),
-                "nombre": c.name,
-                "alias": c.comercial,
-                "pais": c.country_id.code,
-                "domicilio": c.street,
-                "provincia": c.state_id.name,
-                "localidad": c.city,
-                "codigo_postal": c.zip,
-                "administracion_email": c.email or '',
-                "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
-                "tipo_persona": "J" if c.company_type == 'company' else "F",
-            }
-            contacts.append(contact)
-        
-
-        params = {
-            "terceros": contacts,
-        }
-        
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
-        
         return data
     
     # DOCUMENTOS TERCEROS
@@ -280,23 +254,7 @@ class BankinPlayInterface(models.AbstractModel):
             "documentos": documents,
         }
         
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, {}, json.dumps(params)))
         
         return data
     
@@ -329,15 +287,7 @@ class BankinPlayInterface(models.AbstractModel):
             if document_data.get('errors', False):
                 raise UserError("BANKINPLAY: \n" + document_data.get('errors')[0]['description'])
         
-    def _delete_request(self, access_data, url, params, data=None):
-        """Interact with Ponto to get next page of data."""
-        headers = self._get_request_headers(access_data)
-
-        _logger.info(
-            _("`POST` request to %s with headers %s and params %s"), url, headers, params
-        )
-        response = requests.delete(url, params=params, headers=headers, data=data)
-        return self._get_response_data(response, access_data)
+    
     
     # PLAN ANALÍTICO
     
@@ -418,23 +368,7 @@ class BankinPlayInterface(models.AbstractModel):
             params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime("%d/%m/%Y")
             
         
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de importar asientos contables')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
         company_id.bankinplay_last_syncdate = datetime.today()
         
@@ -449,23 +383,7 @@ class BankinPlayInterface(models.AbstractModel):
             "deshabilitar_callback": True
         }
         
-        data = self._post_request(access_data, url, {}, json.dumps(params))
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de importar asientos contables')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, {}, json.dumps(params)))
         
         return data
 

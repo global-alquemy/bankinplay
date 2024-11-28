@@ -5,6 +5,7 @@ import json
 import logging
 import re
 from datetime import datetime
+from odoo.tools.safe_eval import safe_eval
 
 import pytz
 
@@ -57,6 +58,11 @@ class ResCompany(models.Model):
         help="Last Sync Date.",
     )    
 
+    bankinplay_partner_domain = fields.Char(
+        string="Partner Domain",
+        help="Partner Domain.",
+    )
+
     def export_account_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
@@ -77,7 +83,7 @@ class ResCompany(models.Model):
     def bankinplay_export_contacts(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_contacts(access_data)
+        data = interface_model._export_contacts(access_data, safe_eval(self.bankinplay_partner_domain) if self.bankinplay_partner_domain else[])
         return data
     
     def bankinplay_export_documents(self):

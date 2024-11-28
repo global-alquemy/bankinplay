@@ -74,6 +74,25 @@ class BankinPlayInterface(models.AbstractModel):
             "Content-Type": "application/json"
         }
 
+    def _get_pending_async_request(self, access_data, data, params=[]):
+        responseId = data.get('responseId', '')
+        if not responseId:
+            raise UserError('No se han podido traer las transacciones')
+        
+        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
+        data = self._get_request(access_data, url, params)
+        
+        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
+            time.sleep(5)
+            data = self._get_request(access_data, url, params)
+            estado = data.get('estado', '')
+            if estado == 'erroneo':
+                raise UserError('Error en la solicitud de transacciones')
+
+        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
+        data = self._get_request(access_data, url, params)
+        return data
+
     def _set_access_account(self, access_data, account_number):
         """Set bankinplay account for bank account in access_data."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/cuentaBancaria"
@@ -147,23 +166,8 @@ class BankinPlayInterface(models.AbstractModel):
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
         }
         
-        data = self._post_request(access_data, url, params)
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
 
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
         transactions = self._get_transactions_from_data(data)
         return transactions
     
@@ -185,23 +189,7 @@ class BankinPlayInterface(models.AbstractModel):
             "sociedades": [access_data.get("bankinplay_company_card")] if access_data.get("bankinplay_company_card", False) else []
         }
         
-        data = self._post_request(access_data, url, params)
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones')
-        
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, params)
-        
-        while data['estado'] != 'procesado':
-            data = self._get_request(access_data, url, params)
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                raise UserError('Error en la solicitud de transacciones')
-            time.sleep(2)
-
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, params)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
 
@@ -213,14 +201,15 @@ class BankinPlayInterface(models.AbstractModel):
                 _("No transactions where found in data %s"),
                 data,
             )
-        else:
+        elif isinstance(transactions, dict):
             movimientos = transactions.get("movimientos", [])
             if movimientos:
                 transactions = movimientos
-            _logger.info(
-                _("%d transactions present in response data"),
-                len(transactions),
-            )
+        
+        _logger.info(
+            _("%d transactions present in response data"),
+            len(transactions),
+        )
         return transactions
 
     def _get_request(self, access_data, url, params):
@@ -250,6 +239,16 @@ class BankinPlayInterface(models.AbstractModel):
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
         response = requests.put(url, params=params, headers=headers, data=data)
+        return self._get_response_data(response, access_data)
+
+    def _delete_request(self, access_data, url, params, data=None):
+        """Interact with Ponto to get next page of data."""
+        headers = self._get_request_headers(access_data)
+
+        _logger.info(
+            _("`POST` request to %s with headers %s and params %s"), url, headers, params
+        )
+        response = requests.delete(url, params=params, headers=headers, data=data)
         return self._get_response_data(response, access_data)
 
     def _get_response_data(self, response, access_data=False):
@@ -298,31 +297,11 @@ class BankinPlayInterface(models.AbstractModel):
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
         }
         
-        data = self._post_request(access_data, url, params)
-        responseId = data.get('responseId', '')
-        if not responseId:
-            raise UserError('No se han podido traer las transacciones de cierre')
-        
-        data = self._get_pending_async_request(access_data, responseId)
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
     
 
-    def _get_pending_async_request(self, access_data, responseId):
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
-        data = self._get_request(access_data, url, {})
-        
-        while data['estado'] != 'procesado' and data['estado'] != 'terminado':
-            data = self._get_request(access_data, url, {})
-            estado = data.get('estado', '')
-            if estado == 'erroneo':
-                _logger.info(
-                    _("Error en la solicitud"),
-                )
-                raise UserError('Error en la solicitud')
-            time.sleep(2)
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
-        data = self._get_request(access_data, url, {})
-        return data
+    
 
         
