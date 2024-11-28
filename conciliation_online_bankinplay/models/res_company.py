@@ -61,6 +61,7 @@ class ResCompany(models.Model):
     bankinplay_partner_domain = fields.Char(
         string="Partner Domain",
         help="Partner Domain.",
+        default='["&","&",["vat","!=",False],["parent_id","=",False],"|","|",["is_customer","=",True],["is_supplier","=",True],["employee","=",True]]'
     )
 
     def export_account_plan(self):
@@ -89,7 +90,7 @@ class ResCompany(models.Model):
     def bankinplay_export_documents(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_documents(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
+        data = interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
         return data
     
     def bankinplay_import_documents(self):

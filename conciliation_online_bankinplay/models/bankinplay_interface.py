@@ -124,9 +124,12 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
         company_id = self.env.company
         
-        contact_ids = self.env['res.partner'].search(domain, limit=1)
+        domain.extend(['|', ('bankinplay_sent', '=', False), ('bankinplay_update', '=', True)])
+
+        contact_ids = self.env['res.partner'].search(domain, limit=10)
         contacts = []
         for c in contact_ids:
+            print(c.name)
             configuracion_contable = []
             if c.is_customer:
                 configuracion_contable.append({
@@ -159,20 +162,18 @@ class BankinPlayInterface(models.AbstractModel):
                 "nif": c.vat.replace('ES', ''),
                 "nombre": c.name,
                 "alias": c.comercial if c.comercial else '',
-                "pais": c.country_id.code,
-                "domicilio": c.street,
-                "provincia": c.state_id.name,
-                "localidad": c.city,
-                "codigo_postal": c.zip,
+                "pais": c.country_id.code if c.country_id else '',
+                "domicilio": c.street if c.street else '',
+                "provincia": c.state_id.name if c.state_id else '',
+                "localidad": c.city if c.city else '',
+                "codigo_postal": c.zip if c.zip else '',
                 "administracion_email": c.email or '',
                 "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
                 "configuracion_contable": configuracion_contable
             }
             
-            
             contacts.append(contact)
         
-
         params = {
             "terceros": contacts,
         }
@@ -181,10 +182,12 @@ class BankinPlayInterface(models.AbstractModel):
         
         for tercero in data.get('terceros', []):
             if tercero.get('estado', 'Incorrecto') == 'correcto':
-                partner = self.env['res.partner'].search([('vat', '=', tercero['nif'])], limit=1)
+                partner = self.env['res.partner'].search(['|', ('vat', '=', tercero['nif']), ('vat', '=', 'ES'+tercero['nif'])], limit=1)
                 if partner:
-                    partner.bankinplay_sent = True
-                    partner.bankinplay_update = False
+                    partner.write({
+                        "bankinplay_sent": True,
+                        "bankinplay_update": False
+                    })
 
         return data
     
@@ -287,6 +290,54 @@ class BankinPlayInterface(models.AbstractModel):
             if document_data.get('errors', False):
                 raise UserError("BANKINPLAY: \n" + document_data.get('errors')[0]['description'])
         
+    
+
+
+
+    def _export_document_moves(self, access_data, start_date, journal_ids):
+        url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
+        company_id = self.env.company
+        
+        document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)], limit=1)
+        documents = []
+        for d in document_ids:
+
+            tipo_documento_codigo = "FV"
+            if d.move_id.move_type == 'out_refund':
+                tipo_documento_codigo = "AC"
+            elif d.move_id.move_type == 'in_invoice':
+                tipo_documento_codigo = "FC"
+            elif d.move_id.move_type == 'in_refund':
+                tipo_documento_codigo = "AP"
+            
+            document = {
+                "id_documento_erp": str(d.id),
+                "sociedad_cif": company_id.vat.replace('ES', ''),
+                "tipo_documento_codigo": tipo_documento_codigo,
+                "fecha_emision": d.date.strftime("%d/%m/%Y"),
+                "fecha_vencimiento": d.date_maturity.strftime("%d/%m/%Y") if d.date_maturity else False,
+                "fecha_emision_remesa": None,
+                "fecha_cobro": None,
+                "no_documento": d.name,
+                "no_remesa": None,
+                "importe_total": abs(d.amount_currency),
+                "importe_pendiente": d.amount_residual,
+                "divisa": d.currency_id.name,
+                "nif_tercero": d.partner_id.vat.replace('ES', ''),
+                "referencias": [d.ref] if d.ref else []
+            }
+
+        documents.append(document)
+        
+
+        params = {
+            "documentos": documents,
+        }
+        
+        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        
+        return data
+            
     
     
     # PLAN ANALÍTICO

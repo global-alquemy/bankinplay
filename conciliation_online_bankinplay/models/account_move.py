@@ -16,6 +16,14 @@ _logger = logging.getLogger(__name__)
 
 
 class AccountMove(models.Model):
+    _inherit = "account.move.line"
+
+    bankinplay_sent = fields.Boolean(
+        string="BankInPlay Sent",
+        help="BankInPlay Sent.",
+    )
+
+class AccountMove(models.Model):
     _inherit = "account.move"
 
     bankinplay_sent = fields.Boolean(
