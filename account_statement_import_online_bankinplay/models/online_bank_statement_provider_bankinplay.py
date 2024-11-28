@@ -204,5 +204,11 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         lines.extend(transactions)
            
         return lines
+    
+    def get_keys_from_company(self):
+        self.ensure_one()
+        company = self.company_id
+        self.username = company.bankinplay_apikey
+        self.password = company.bankinplay_apisecret
 
         
