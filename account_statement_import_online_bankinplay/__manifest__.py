@@ -14,5 +14,6 @@
     "data": [
         "security/ir.model.access.csv",
         "views/online_bank_statement_provider.xml",
+        "views/res_company.xml",
     ],
 }
