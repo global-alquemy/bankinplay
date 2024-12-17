@@ -176,8 +176,8 @@ class BankinPlayInterface(models.AbstractModel):
 
         event_data = {
             "event": "lectura_intradia",
-            "date_since": date_since,
-            "date_until": date_until,
+            "date_since": date_since.strftime("%Y/%m/%d"),
+            "date_until": date_until.strftime("%Y/%m/%d"),
             "provider_id": provider_id.id
         }
 
