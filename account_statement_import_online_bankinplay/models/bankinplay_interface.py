@@ -9,6 +9,7 @@ import time
 
 import requests
 from dateutil.relativedelta import relativedelta
+from datetime import datetime, date
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -360,8 +361,11 @@ class BankinPlayInterface(models.AbstractModel):
                 transaction, sequence)
             new_transactions.append(vals_line)
 
-        statement_date_since = event_data.get("date_since")
-        statement_date_until = event_data.get("date_until")
+        statement_date_since = datetime.strptime(
+            event_data.get("date_since"), "%Y/%m/%d").date()
+        statement_date_until = datetime.strptime(
+            event_data.get("date_until"), "%Y/%m/%d").date()
+
         provider_id._create_or_update_statement(
             (new_transactions, {}), statement_date_since, statement_date_until
         )
