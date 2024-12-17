@@ -177,14 +177,14 @@ class BankinPlayInterface(models.AbstractModel):
 
         _logger.info(
             _("%d transactions present in response data"),
-            len(transactions),
+            len(trans),
         )
-        for transaction in transactions:
+        for transaction in trans:
             _logger.info(
                 _("Transaction %s"),
                 transaction,
             )
-        return transactions
+        return trans
 
     def _get_request(self, access_data, url, params):
         """Interact with Ponto to get next page of data."""
