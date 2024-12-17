@@ -1,4 +1,5 @@
 import logging
+import json
 
 from odoo import _, http
 from odoo.http import request
@@ -28,9 +29,20 @@ class CallbackController(http.Controller):
         # Mostrar los datos en el log con etiqueta "bankinplay"
         _logger.info("bankinplay - Datos recibidos en webhook: %s", data)
         _logger.info("bankinplay - Parámetro data: %s", data_)
-        _logger.info("bankinplay - Parámetro triggered_event: %s", triggered_event)
+        _logger.info("bankinplay - Parámetro triggered_event: %s",
+                     triggered_event)
         _logger.info("bankinplay - Parámetro signature: %s", signature)
         _logger.info("bankinplay - Parámetro responseId: %s", response_id)
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'response',
+            'request_data': '',
+            'response_data': data,
+            'status': 'pending',
+            'notes': 'Callback - lectura_intradia',
+            'response_id': response_id,
+            'signature': signature,
+        })
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
