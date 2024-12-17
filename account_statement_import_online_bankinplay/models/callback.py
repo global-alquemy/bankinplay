@@ -53,21 +53,20 @@ class CallbackController(http.Controller):
             'signature': signature,
         })
 
-        if request_id:
-            if request_id.event_data:
-                response = interface_model.manage_lectura_intradia_callback(
-                    desencrypt_data, request_id.event_data
-                )
+        
+        response = interface_model.manage_lectura_intradia_callback(
+            desencrypt_data, event_data
+        )
 
-                if response:
-                    request_id.write({
-                        'status': 'success',
-                        'related_log_id': log_entry.id,
-                    })
-                    log_entry.write({
-                        'status': 'success',
-                        'related_log_id': request_id.id,
-                    })
+        if response:
+            request_id.write({
+                'status': 'success',
+                'related_log_id': log_entry.id,
+            })
+            log_entry.write({
+                'status': 'success',
+                'related_log_id': request_id.id,
+            })
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
