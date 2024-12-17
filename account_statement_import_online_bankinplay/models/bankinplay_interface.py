@@ -363,5 +363,5 @@ class BankinPlayInterface(models.AbstractModel):
         statement_date_since = event_data.get("date_since")
         statement_date_until = event_data.get("date_until")
         provider_id._create_or_update_statement(
-            new_transactions, statement_date_since, statement_date_until
+            (new_transactions, {}), statement_date_since, statement_date_until
         )

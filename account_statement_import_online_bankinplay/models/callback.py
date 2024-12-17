@@ -53,6 +53,18 @@ class CallbackController(http.Controller):
             'signature': signature,
         })
 
+        if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
+            request_id.write({
+                'status': 'error',
+                'related_log_id': log_entry.id,
+            })
+            log_entry.write({
+                'status': 'error',
+                'related_log_id': request_id.id,
+            })
+
+            return {"status": "success", "message": "Datos recibidos correctamente"}
+
         response = interface_model.sudo().manage_lectura_intradia_callback(
             desencrypt_data, event_data
         )
