@@ -170,8 +170,10 @@ class BankinPlayInterface(models.AbstractModel):
         elif isinstance(transactions, dict):
             movimientos = transactions.get("movimientos", [])
             if movimientos:
-                transactions = [item for item in movimientos if item.get(
-                    'num_tarjeta') == provider_id.bankinplay_card_number]
+                trans = []
+                for movimiento in movimientos:
+                    if movimiento.get('num_tarjeta') == provider_id.bankinplay_card_number:
+                        trans.append(movimiento)
 
         _logger.info(
             _("%d transactions present in response data"),
