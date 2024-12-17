@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_bankinplay_interface,bankinplay_interface,model_bankinplay_interface,,1,1,1,1
+access_bankinplay_log,bankinplay_log,model_bankinplay_log,,1,1,1,1
