@@ -190,7 +190,7 @@ class BankinPlayInterface(models.AbstractModel):
             'notes': 'Petición de transacciones enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
             'signature': data.get('signature', ''),
-            'event_data': event_data
+            'event_data': json.dumps(event_data)
         })
 
     def _get_card_transactions(self, access_data, date_since, date_until):

@@ -31,14 +31,13 @@ class CallbackController(http.Controller):
             [('response_id', '=', response_id),
              ('signature', '=', signature)])
 
-
-        event_data = request_id.event_data
+        event_data = json.loads(request_id.event_data)
+        access_data = event_data.access_data
 
         _logger.info("Request ID: %s", request_id)
         _logger.info("Request Event Data: %s", request_id.event_data)
         _logger.info("Request Event Data: %s",
-                     request_id.event_data.access_data)
-
+                     access_data)
 
         desencrypt_data = interface_model._desencrypt_data(
             data, request_id.event_data.access_data)
