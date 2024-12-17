@@ -9,7 +9,7 @@
                 <field name="status"/>
                 <field name="request_data"/>
                 <field name="response_data"/>
-                <field name="decrypt_data"/>
+                <field name="desencrypt_data"/>
                 <field name="response_id"/>
                 <field name="signature"/>
             </tree>
