@@ -54,7 +54,7 @@ class CallbackController(http.Controller):
         })
 
         response = interface_model.sudo().manage_lectura_intradia_callback(
-            desencrypt_data.get('results'), event_data
+            desencrypt_data, event_data
         )
 
         if response:
