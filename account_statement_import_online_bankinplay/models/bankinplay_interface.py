@@ -345,7 +345,7 @@ class BankinPlayInterface(models.AbstractModel):
     def manage_lectura_intradia_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
         transactions = self._get_transactions_from_data(data)
-        provider_id = self.env["account.online.provider"].browse(
+        provider_id = self.env["online.bank.statement.provider"].browse(
             event_data.get("provider_id")
         )
         statement_date_since = event_data.get("date_since")
