@@ -28,7 +28,7 @@ class CallbackController(http.Controller):
         signature = data.get('signature')
         response_id = data.get('responseId')
 
-        desencrypt_data = interface_model.decrypt_data(_data)
+        desencrypt_data = interface_model._desencrypt_data(_data)
 
         log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
