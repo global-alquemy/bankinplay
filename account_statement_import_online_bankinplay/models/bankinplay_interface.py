@@ -356,7 +356,7 @@ class BankinPlayInterface(models.AbstractModel):
         sequence = 0
         for transaction in lines:
             sequence += 1
-            vals_line = provider_id._bankinplay_get_transaction_vals(
+            vals_line = provider_id.sudo()._bankinplay_get_transaction_vals(
                 transaction, sequence)
             new_transactions.append(vals_line)
 
