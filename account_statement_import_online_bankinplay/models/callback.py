@@ -24,11 +24,10 @@ class CallbackController(http.Controller):
 
         # Acceder a parámetros específicos
         _data = data.get('data')
-        event_data = data.get('event_data')
         signature = data.get('signature')
         response_id = data.get('responseId')
 
-        desencrypt_data = interface_model._desencrypt_data(_data)
+        desencrypt_data = interface_model._desencrypt_data(data)
 
         log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
