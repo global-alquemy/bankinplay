@@ -40,7 +40,7 @@ class CallbackController(http.Controller):
                      access_data)
 
         desencrypt_data = interface_model._desencrypt_data(
-            data, request_id.event_data.access_data)
+            data, access_data)
 
         log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
