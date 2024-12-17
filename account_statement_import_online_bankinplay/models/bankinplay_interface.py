@@ -422,29 +422,8 @@ class BankinPlayInterface(models.AbstractModel):
 
     def manage_lectura_tarjeta_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
-        transactions = self._get_card_transactions(data)
-        provider_id = self.env["online.bank.statement.provider"].browse(
-            event_data.get("provider_id")
-        )
-
-        lines = []
-        lines.extend(transactions)
-        new_transactions = []
-        sequence = 0
-        for transaction in lines:
-            sequence += 1
-            vals_line = provider_id._bankinplay_get_card_transaction_vals(
-                transaction, sequence)
-            new_transactions.append(vals_line)
-
-        statement_date_since = datetime.strptime(
-            event_data.get("date_since"), "%Y/%m/%d")
-        statement_date_until = datetime.strptime(
-            event_data.get("date_until"), "%Y/%m/%d")
-
-        provider_id._create_or_update_statement(
-            (new_transactions, {}), statement_date_since, statement_date_until
-        )
+        transactions = self._get_transactions_from_data(data)
+        self.manage_lectura_callback(transactions, event_data)
 
         return True
 
