@@ -26,10 +26,14 @@ class CallbackController(http.Controller):
         # Acceder a parámetros específicos
         data_ = data.get('data')
         triggered_event = data.get('triggered_event')
+        signature = data.get('signature')
+        response_id = data.get('responseId')
 
         # Realizar alguna operación con los datos
         _logger.info(f"Parámetro 1: {data_}")
         _logger.info(f"Parámetro 1: {triggered_event}")
+        _logger.info(f"Parámetro 1: {signature}")
+        _logger.info(f"Parámetro 1: {response_id}")
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
