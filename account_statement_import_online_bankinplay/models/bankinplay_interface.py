@@ -365,3 +365,5 @@ class BankinPlayInterface(models.AbstractModel):
         provider_id._create_or_update_statement(
             (new_transactions, {}), statement_date_since, statement_date_until
         )
+
+        return True
