@@ -53,8 +53,7 @@ class CallbackController(http.Controller):
             'signature': signature,
         })
 
-        
-        response = interface_model.manage_lectura_intradia_callback(
+        response = interface_model.sudo().manage_lectura_intradia_callback(
             desencrypt_data, event_data
         )
 
