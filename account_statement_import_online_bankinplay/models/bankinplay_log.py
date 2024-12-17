@@ -22,7 +22,7 @@ class BankinplayLog(models.Model):
         string='Datetime', default=lambda self: fields.Datetime.now(), readonly=True)
     request_data = fields.Text(string='Request Data')
     response_data = fields.Text(string='Response Data')
-    decrypt_data = fields.Text(string='Decrypt Data')
+    desencrypt_data = fields.Text(string='Desencrypt Data')
     event_data = fields.Text(string='Event Data')
     status = fields.Selection([
         ('success', 'Success'),
