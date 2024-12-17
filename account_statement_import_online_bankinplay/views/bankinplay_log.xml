@@ -33,7 +33,7 @@
                         <field name="event_data"/>
                         <field name="request_data"/>
                         <field name="response_data"/>
-                        <field name="decrypt_data"/>
+                        <field name="desencrypt_data"/>
 
                     </group>
                     <field name="notes"/>
