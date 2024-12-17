@@ -34,7 +34,7 @@ class CallbackController(http.Controller):
         _logger.info("bankinplay - Parámetro signature: %s", signature)
         _logger.info("bankinplay - Parámetro responseId: %s", response_id)
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
             'request_data': '',
             'response_data': data,
