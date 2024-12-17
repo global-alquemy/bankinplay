@@ -362,9 +362,9 @@ class BankinPlayInterface(models.AbstractModel):
             new_transactions.append(vals_line)
 
         statement_date_since = datetime.strptime(
-            event_data.get("date_since"), "%Y/%m/%d").date()
+            event_data.get("date_since"), "%Y/%m/%d")
         statement_date_until = datetime.strptime(
-            event_data.get("date_until"), "%Y/%m/%d").date()
+            event_data.get("date_until"), "%Y/%m/%d")
 
         provider_id._create_or_update_statement(
             (new_transactions, {}), statement_date_since, statement_date_until
