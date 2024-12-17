@@ -89,7 +89,11 @@ class BankinPlayInterface(models.AbstractModel):
             if estado == 'erroneo':
                 raise UserError('Error en la solicitud de transacciones')
 
-        url = BANKINPLAY_ENDPOINT_V1 + "/respuestaAsincronaApi/recogida?responseId="+responseId
+        url = (
+            BANKINPLAY_ENDPOINT_V1
+            + "/respuestaAsincronaApi/recogida?responseId="
+            + responseId
+        )
         data = self._get_request(access_data, url, params)
         return data
 
@@ -300,8 +304,3 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
-    
-
-    
-
-        

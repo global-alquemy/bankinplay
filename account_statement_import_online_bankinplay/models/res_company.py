@@ -39,7 +39,8 @@ class ResCompany(models.Model):
         if not self.bankinplay_start_date:
             raise UserError(_("Please provide the Banking Play Start Date."))
         interface_model = self.env["bankinplay.interface"]
-        access_data = interface_model._login(self.bankinplay_apikey, self.bankinplay_apisecret)
+        access_data = interface_model._login(
+            self.bankinplay_apikey, self.bankinplay_apisecret)
         if not access_data:
             raise UserError(_("Connection Test Failed!"))
         
@@ -72,3 +73,4 @@ class ResCompany(models.Model):
                 'sticky': False,
             }
         }
+    

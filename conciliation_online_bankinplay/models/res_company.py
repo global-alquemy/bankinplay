@@ -238,7 +238,6 @@ class ResCompany(models.Model):
 
 
     #CRON
-    
     def bankinplay_export_account_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
         for company in company_ids:

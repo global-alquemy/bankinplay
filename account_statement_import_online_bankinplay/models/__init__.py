@@ -2,3 +2,4 @@
 from . import bankinplay_interface
 from . import online_bank_statement_provider_bankinplay
 from . import res_company
+from . import callback
