@@ -36,6 +36,7 @@ class CallbackController(http.Controller):
         _logger.info("Request Event Data: %s",
                      request_id.event_data.access_data)
 
+
         desencrypt_data = interface_model._desencrypt_data(
             data, request_id.event_data.access_data)
 
