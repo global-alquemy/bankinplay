@@ -25,6 +25,7 @@ class CallbackController(http.Controller):
         # Acceder a parámetros específicos
         _data = data.get('data')
         signature = data.get('signature')
+        
         response_id = data.get('responseId')
 
         desencrypt_data = interface_model._desencrypt_data(data)
