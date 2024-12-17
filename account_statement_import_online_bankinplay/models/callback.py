@@ -30,7 +30,7 @@ class CallbackController(http.Controller):
         request_id = request.env['bankinplay.log'].sudo().search(
             [('response_id', '=', response_id),
              ('signature', '=', signature),
-             ('triggered_event', '=', request_id.event_data.get('event'))])
+             ('triggered_event', '=', 'lectura_intradia')], limit=1)
 
         desencrypt_data = interface_model._desencrypt_data(
             data, request_id.get('event_data'))
