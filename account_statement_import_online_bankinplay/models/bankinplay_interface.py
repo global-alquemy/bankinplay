@@ -342,6 +342,66 @@ class BankinPlayInterface(models.AbstractModel):
         transactions = self._get_transactions_from_data(data)
         return transactions
 
+    def _bankinplay_get_transaction_vals(self, transaction, sequence):
+        """Translate information from BankInPlay to statement line vals."""
+
+        if self.bankinplay_is_card:
+            return self._bankinplay_get_card_transaction_vals(transaction, sequence)
+
+        side = -1 if transaction["signo"] == "Pago" else 1
+        date = self._bankinplay_get_transaction_datetime(transaction)
+        vals_line = {
+            "sequence": sequence,
+            "date": date,
+            "ref": '/',
+            "payment_ref": transaction["descripcion"],
+            "unique_import_id": str(transaction["id"]),
+            "transaction_type": transaction["instrumento"],
+            "narration": transaction["notas"],
+            "amount": transaction["importeAbsoluto"] * side,
+        }
+        return vals_line
+
+    def _bankinplay_get_card_transaction_vals(self, transaction, sequence):
+        """Translate information from BankInPlay to statement line vals."""
+        datetime_str = transaction.get("fecha")
+        date = self._bankinplay_datetime_from_string(datetime_str)
+
+        side = -1 if transaction["signo"] == "pago" else 1
+        vals_line = {
+            "sequence": sequence,
+            "date": date,
+            "ref": '/',
+            "payment_ref": transaction["descripcion"],
+            "unique_import_id": str(transaction["id"]),
+            "transaction_type": '',
+            "narration": transaction["notas"],
+            "amount": transaction["importe"] * side,
+        }
+        return vals_line
+
+    def _bankinplay_get_transaction_datetime(self, transaction):
+        """Get execution datetime for a transaction.
+
+        Odoo often names variables containing date and time just xxx_date or
+        date_xxx. We try to avoid this misleading naming by using datetime as
+        much for variables and fields of type datetime.
+        """
+        if self.bankinplay_date_field == "value_date":
+            datetime_str = transaction.get("fechaValor")
+        else:
+            datetime_str = transaction.get("fechaOperacion")
+        return self._bankinplay_datetime_from_string(datetime_str)
+
+    def _bankinplay_datetime_from_string(self, datetime_str):
+        """Dates in BankInPlay are expressed in UTC, so we need to convert them
+        to supplied tz for proper classification.
+        """
+        dt = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%SZ")
+        dt = dt.replace(tzinfo=pytz.utc).astimezone(
+            pytz.timezone(self.tz or "utc"))
+        return dt.replace(tzinfo=None)
+
     def manage_lectura_intradia_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
         transactions = self._get_transactions_from_data(data)
@@ -356,7 +416,7 @@ class BankinPlayInterface(models.AbstractModel):
         sequence = 0
         for transaction in lines:
             sequence += 1
-            vals_line = provider_id.sudo()._bankinplay_get_transaction_vals(
+            vals_line = self._bankinplay_get_transaction_vals(
                 transaction, sequence)
             new_transactions.append(vals_line)
 
