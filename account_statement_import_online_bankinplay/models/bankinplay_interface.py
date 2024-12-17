@@ -170,7 +170,6 @@ class BankinPlayInterface(models.AbstractModel):
         elif isinstance(transactions, dict):
             movimientos = transactions.get("movimientos", [])
             if movimientos:
-
                 transactions = [item for item in movimientos if item.get(
                     'num_tarjeta') == provider_id.bankinplay_card_number]
 
@@ -178,6 +177,11 @@ class BankinPlayInterface(models.AbstractModel):
             _("%d transactions present in response data"),
             len(transactions),
         )
+        for transaction in transactions:
+            _logger.debug(
+                _("Transaction %s"),
+                transaction,
+            )
         return transactions
 
     def _get_request(self, access_data, url, params):
