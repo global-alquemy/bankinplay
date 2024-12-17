@@ -180,7 +180,7 @@ class BankinPlayInterface(models.AbstractModel):
             len(transactions),
         )
         for transaction in transactions:
-            _logger.debug(
+            _logger.info(
                 _("Transaction %s"),
                 transaction,
             )
