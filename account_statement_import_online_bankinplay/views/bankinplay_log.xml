@@ -30,7 +30,6 @@
                         <field name="signature"/>
                     </group>
                     <group>
-                        <field name="triggered_event"/>
                         <field name="event_data"/>
                         <field name="request_data"/>
                         <field name="response_data"/>
