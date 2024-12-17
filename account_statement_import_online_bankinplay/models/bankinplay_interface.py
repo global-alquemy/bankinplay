@@ -164,16 +164,24 @@ class BankinPlayInterface(models.AbstractModel):
         
         params = {
             "exportados": True,
-            "deshabilitar_callback": True,
+            "deshabilitar_callback": False,
             "fechaDesdeOperacion": date_since.strftime("%d/%m/%Y"),
             "fechaHastaOperacion": date_until.strftime("%d/%m/%Y"),
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
         }
-        
-        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
 
-        transactions = self._get_transactions_from_data(data)
-        return transactions
+        data = self._simple_post_request(access_data, url, params)
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de transacciones enviada a BankInPlay',
+            'response_id': data.get('responseId', '')
+        })
+        
+        
     
     def _get_card_transactions(self, access_data, date_since, date_until):
         """Get transactions from bankingplay, using last_identifier as pointer.
@@ -225,6 +233,17 @@ class BankinPlayInterface(models.AbstractModel):
         response = requests.get(url, params=params, headers=headers)
         return self._get_response_data(response, access_data)
     
+    def _simple_post_request(self, access_data, url, params, data=None):
+        """Interact with Ponto to get next page of data."""
+        headers = self._get_request_headers(access_data)
+
+        _logger.info(
+            _("`POST` request to %s with headers %s and params %s"), url, headers, params
+        )
+        response = requests.post(url, params=params, headers=headers, data=data)
+        data = json.loads(response.text)
+        return data
+
     def _post_request(self, access_data, url, params, data=None):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)

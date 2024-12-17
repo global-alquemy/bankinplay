@@ -15,5 +15,6 @@
         "security/ir.model.access.csv",
         "views/online_bank_statement_provider.xml",
         "views/res_company.xml",
+        "views/bankinplay_log.xml",
     ],
 }
