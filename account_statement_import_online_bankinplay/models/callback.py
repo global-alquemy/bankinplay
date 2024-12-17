@@ -33,7 +33,7 @@ class CallbackController(http.Controller):
              ('triggered_event', '=', 'lectura_intradia')], limit=1)
 
         desencrypt_data = interface_model._desencrypt_data(
-            data, request_id.get('event_data'))
+            data, request_id.event_data.get('access_data'))
 
         log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
