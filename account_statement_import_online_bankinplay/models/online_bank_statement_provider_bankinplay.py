@@ -120,6 +120,8 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
 
     def _bankinplay_get_card_transaction_vals(self, transaction, sequence):
         """Translate information from BankInPlay to statement line vals."""
+        _logger.debug("BankInPlay get card transaction vals")
+        _logger.debug(transaction)
         datetime_str = transaction.get("fecha")
         date = self._bankinplay_datetime_from_string(datetime_str)
 
