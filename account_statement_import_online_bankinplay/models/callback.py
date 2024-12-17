@@ -19,21 +19,18 @@ class CallbackController(http.Controller):
         # Obtener los datos del cuerpo de la solicitud
         data = request.jsonrequest
 
-        # Mostrar los datos en el log para depuración
-
-        # _logger.info('Datos recibidos en webhook: %s', data)
-
         # Acceder a parámetros específicos
         data_ = data.get('data')
         triggered_event = data.get('triggered_event')
         signature = data.get('signature')
         response_id = data.get('responseId')
 
-        # Realizar alguna operación con los datos
-        _logger.info(f"Parámetro 1: {data_}")
-        _logger.info(f"Parámetro 1: {triggered_event}")
-        _logger.info(f"Parámetro 1: {signature}")
-        _logger.info(f"Parámetro 1: {response_id}")
+        # Mostrar los datos en el log con etiqueta "bankinplay"
+        _logger.info("bankinplay - Datos recibidos en webhook: %s", data)
+        _logger.info("bankinplay - Parámetro data: %s", data_)
+        _logger.info("bankinplay - Parámetro triggered_event: %s", triggered_event)
+        _logger.info("bankinplay - Parámetro signature: %s", signature)
+        _logger.info("bankinplay - Parámetro responseId: %s", response_id)
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
