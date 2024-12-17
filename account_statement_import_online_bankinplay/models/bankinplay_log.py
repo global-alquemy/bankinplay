@@ -13,6 +13,8 @@ class BankinplayLog(models.Model):
 
     response_id = fields.Char(string='Response ID')
 
+    signature = fields.Char(string='Signature')
+
     related_log_id = fields.Many2one(
         'bankinplay.log', string='Related Bankinplay Log')
 

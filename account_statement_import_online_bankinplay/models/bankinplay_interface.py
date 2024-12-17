@@ -33,7 +33,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _get_companies(self, access_data):
         """Get companies from bankingplay."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/sociedades"
-        
+
         data = self._get_request(access_data, url, {})
         return data
 
@@ -78,10 +78,10 @@ class BankinPlayInterface(models.AbstractModel):
         responseId = data.get('responseId', '')
         if not responseId:
             raise UserError('No se han podido traer las transacciones')
-        
+
         url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
         data = self._get_request(access_data, url, params)
-        
+
         while data['estado'] != 'procesado' and data['estado'] != 'terminado':
             time.sleep(5)
             data = self._get_request(access_data, url, params)
@@ -110,14 +110,15 @@ class BankinPlayInterface(models.AbstractModel):
                 bankinplay_account.get("cuentaCompleta", {})
             )
             if bankinplay_iban == account_number:
-                access_data["bankinplay_account"] = bankinplay_account.get("id")
+                access_data["bankinplay_account"] = bankinplay_account.get(
+                    "id")
                 return access_data
         # If we get here, we did not find Ponto account for bank account.
         raise UserError(
             _("BankInPlay : wrong configuration, account %s not found in %s")
             % (account_number, data)
         )
-    
+
     def _set_access_card(self, access_data, account_number):
         """Set bankinplay account for bank card in access_data."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/tarjeta"
@@ -136,7 +137,8 @@ class BankinPlayInterface(models.AbstractModel):
                 for company in get_companies:
                     if company['nif'] == bankinplay_account.get("cif_sociedad", ''):
                         check_company = True
-                        access_data["bankinplay_company_card"] = company.get("id")
+                        access_data["bankinplay_company_card"] = company.get(
+                            "id")
                         break
 
                 if not check_company:
@@ -144,7 +146,7 @@ class BankinPlayInterface(models.AbstractModel):
                         _("BankInPlay : wrong configuration, company %s not found in %s")
                         % (self.vat, get_companies)
                     )
-                
+
                 return access_data
         # If we get here, we did not find Ponto account for bank account.
         raise UserError(
@@ -161,7 +163,7 @@ class BankinPlayInterface(models.AbstractModel):
         (Ponto id), you will get transactions with an earlier date.
         """
         url = BANKINPLAY_ENDPOINT_V1 + "/statement/lectura_intradia"
-        
+
         params = {
             "exportados": True,
             "deshabilitar_callback": False,
@@ -178,11 +180,10 @@ class BankinPlayInterface(models.AbstractModel):
             'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de transacciones enviada a BankInPlay',
-            'response_id': data.get('responseId', '')
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
         })
-        
-        
-    
+
     def _get_card_transactions(self, access_data, date_since, date_until):
         """Get transactions from bankingplay, using last_identifier as pointer.
 
@@ -192,7 +193,7 @@ class BankinPlayInterface(models.AbstractModel):
         (Ponto id), you will get transactions with an earlier date.
         """
         url = BANKINPLAY_ENDPOINT_V1 + "/movimientoTarjetaApi/lectura_tarjeta"
-        
+
         params = {
             "exportados": True,
             "deshabilitar_callback": True,
@@ -200,8 +201,9 @@ class BankinPlayInterface(models.AbstractModel):
             "fechaHasta": date_until.strftime("%d/%m/%Y"),
             "sociedades": [access_data.get("bankinplay_company_card")] if access_data.get("bankinplay_company_card", False) else []
         }
-        
-        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
+
+        data = self._get_pending_async_request(
+            access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
 
@@ -217,7 +219,7 @@ class BankinPlayInterface(models.AbstractModel):
             movimientos = transactions.get("movimientos", [])
             if movimientos:
                 transactions = movimientos
-        
+
         _logger.info(
             _("%d transactions present in response data"),
             len(transactions),
@@ -232,7 +234,7 @@ class BankinPlayInterface(models.AbstractModel):
         )
         response = requests.get(url, params=params, headers=headers)
         return self._get_response_data(response, access_data)
-    
+
     def _simple_post_request(self, access_data, url, params, data=None):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
@@ -240,7 +242,8 @@ class BankinPlayInterface(models.AbstractModel):
         _logger.info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
-        response = requests.post(url, params=params, headers=headers, data=data)
+        response = requests.post(
+            url, params=params, headers=headers, data=data)
         data = json.loads(response.text)
         return data
 
@@ -251,9 +254,10 @@ class BankinPlayInterface(models.AbstractModel):
         _logger.info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
-        response = requests.post(url, params=params, headers=headers, data=data)
+        response = requests.post(
+            url, params=params, headers=headers, data=data)
         return self._get_response_data(response, access_data)
-    
+
     def _put_request(self, access_data, url, params, data=None):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
@@ -271,12 +275,14 @@ class BankinPlayInterface(models.AbstractModel):
         _logger.info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
-        response = requests.delete(url, params=params, headers=headers, data=data)
+        response = requests.delete(
+            url, params=params, headers=headers, data=data)
         return self._get_response_data(response, access_data)
 
     def _get_response_data(self, response, access_data=False):
         """Get response data for GET or POST request."""
-        _logger.info(_("HTTP answer code %s from BankInPlay"), response.status_code)
+        _logger.info(_("HTTP answer code %s from BankInPlay"),
+                     response.status_code)
         if response.status_code not in (200, 201):
             raise UserError(
                 _("Server returned status code %s: %s")
@@ -300,10 +306,12 @@ class BankinPlayInterface(models.AbstractModel):
                     return data
             key = access_data["user"].ljust(16, '$')[:16]
             iv = access_data["pass"].ljust(16, '$')[:16]
-            
+
             encrypted_bytes = base64.b64decode(data)
-            cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
-            decrypted_bytes = unpad(cipher.decrypt(encrypted_bytes), AES.block_size)
+            cipher = AES.new(key.encode('utf-8'),
+                             AES.MODE_CBC, iv.encode('utf-8'))
+            decrypted_bytes = unpad(cipher.decrypt(
+                encrypted_bytes), AES.block_size)
             return json.loads(decrypted_bytes.decode('utf-8'))
         else:
             return data
@@ -311,7 +319,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _get_closing_transactions(self, access_data, date_since, date_until):
         """Get closing transactions from bankingplay."""
         url = BANKINPLAY_ENDPOINT_V1 + "/statement/lectura_cierre"
-        
+
         params = {
             "exportados": True,
             "deshabilitar_callback": True,
@@ -319,7 +327,8 @@ class BankinPlayInterface(models.AbstractModel):
             "fechaHastaOperacion": date_until.strftime("%d/%m/%Y"),
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
         }
-        
-        data = self._get_pending_async_request(access_data, self._post_request(access_data, url, params))
+
+        data = self._get_pending_async_request(
+            access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
