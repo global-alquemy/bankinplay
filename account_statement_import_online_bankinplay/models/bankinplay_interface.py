@@ -345,6 +345,9 @@ class BankinPlayInterface(models.AbstractModel):
     def manage_lectura_intradia_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
         transactions = self._get_transactions_from_data(data)
+        provider_id = self.env["online.bank.statement.provider"].browse(
+            event_data.get("provider_id")
+        )
 
         lines = []
         lines.extend(transactions)
@@ -353,13 +356,10 @@ class BankinPlayInterface(models.AbstractModel):
         sequence = 0
         for transaction in lines:
             sequence += 1
-            vals_line = self._bankinplay_get_transaction_vals(
+            vals_line = provider_id._bankinplay_get_transaction_vals(
                 transaction, sequence)
             new_transactions.append(vals_line)
 
-        provider_id = self.env["online.bank.statement.provider"].browse(
-            event_data.get("provider_id")
-        )
         statement_date_since = event_data.get("date_since")
         statement_date_until = event_data.get("date_until")
         provider_id._create_or_update_statement(
