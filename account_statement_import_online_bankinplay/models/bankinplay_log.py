@@ -31,6 +31,7 @@ class BankinplayLog(models.Model):
     ], string='Status', default='pending')
 
     notes = fields.Char(string='Notes')
+    triggered_event = fields.Char(string='Triggered Event')
 
     def set_status(self, status):
         self.ensure_one()

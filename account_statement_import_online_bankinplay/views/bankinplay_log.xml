@@ -12,6 +12,7 @@
                 <field name="desencrypt_data"/>
                 <field name="response_id"/>
                 <field name="signature"/>
+                <field name="triggered_event"/>
             </tree>
         </field>
     </record>
@@ -34,6 +35,7 @@
                         <field name="request_data"/>
                         <field name="response_data"/>
                         <field name="desencrypt_data"/>
+                        <field name="triggered_event"/>
 
                     </group>
                     <field name="notes"/>

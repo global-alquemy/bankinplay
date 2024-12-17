@@ -90,13 +90,13 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
 
         if self.bankinplay_is_card:
             interface_model._get_card_transactions(
-                access_data, date_since, date_until)
+                access_data, date_since, date_until, self)
         elif self.bankinplay_import_type == "intraday":
             interface_model._get_transactions(
                 access_data, date_since, date_until, self)
         else:
             interface_model._get_closing_transactions(
-                access_data, date_since, date_until)
+                access_data, date_since, date_until, self)
 
     def _bankinplay_get_transaction_vals(self, transaction, sequence):
         """Translate information from BankInPlay to statement line vals."""

@@ -155,68 +155,6 @@ class BankinPlayInterface(models.AbstractModel):
             % (account_number, data)
         )
 
-    def _get_transactions(self, access_data, date_since, date_until, provider_id):
-        """Get transactions from bankingplay, using last_identifier as pointer.
-
-        Note that Ponto has the transactions in descending order. The first
-        transaction, retrieved by not passing an identifier, is the latest
-        present in Ponto. If you read transactions 'after' a certain identifier
-        (Ponto id), you will get transactions with an earlier date.
-        """
-        url = BANKINPLAY_ENDPOINT_V1 + "/statement/lectura_intradia"
-
-        params = {
-            "exportados": True,
-            "deshabilitar_callback": False,
-            "fechaDesdeOperacion": date_since.strftime("%d/%m/%Y"),
-            "fechaHastaOperacion": date_until.strftime("%d/%m/%Y"),
-            "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
-        }
-
-        data = self._simple_post_request(access_data, url, params)
-
-        event_data = {
-            "event": "lectura_intradia",
-            "date_since": date_since.strftime("%Y/%m/%d"),
-            "date_until": date_until.strftime("%Y/%m/%d"),
-            "provider_id": provider_id.id,
-            "access_data": access_data
-        }
-
-        log_entry = self.env['bankinplay.log'].create({
-            'operation_type': 'request',
-            'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
-            'status': 'pending',
-            'notes': 'Petición de transacciones enviada a BankInPlay',
-            'response_id': data.get('responseId', ''),
-            'signature': data.get('signature', ''),
-            'event_data': json.dumps(event_data)
-        })
-
-    def _get_card_transactions(self, access_data, date_since, date_until):
-        """Get transactions from bankingplay, using last_identifier as pointer.
-
-        Note that Ponto has the transactions in descending order. The first
-        transaction, retrieved by not passing an identifier, is the latest
-        present in Ponto. If you read transactions 'after' a certain identifier
-        (Ponto id), you will get transactions with an earlier date.
-        """
-        url = BANKINPLAY_ENDPOINT_V1 + "/movimientoTarjetaApi/lectura_tarjeta"
-
-        params = {
-            "exportados": True,
-            "deshabilitar_callback": True,
-            "fechaDesde": date_since.strftime("%d/%m/%Y"),
-            "fechaHasta": date_until.strftime("%d/%m/%Y"),
-            "sociedades": [access_data.get("bankinplay_company_card")] if access_data.get("bankinplay_company_card", False) else []
-        }
-
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, params))
-        transactions = self._get_transactions_from_data(data)
-        return transactions
-
     def _get_transactions_from_data(self, data):
         """Get all transactions that are in the ponto response data."""
         transactions = data.get("results", [])
@@ -326,7 +264,47 @@ class BankinPlayInterface(models.AbstractModel):
         else:
             return data
 
-    def _get_closing_transactions(self, access_data, date_since, date_until):
+    def _get_transactions(self, access_data, date_since, date_until, provider_id):
+        """Get transactions from bankingplay, using last_identifier as pointer.
+
+        Note that Ponto has the transactions in descending order. The first
+        transaction, retrieved by not passing an identifier, is the latest
+        present in Ponto. If you read transactions 'after' a certain identifier
+        (Ponto id), you will get transactions with an earlier date.
+        """
+        url = BANKINPLAY_ENDPOINT_V1 + "/statement/lectura_intradia"
+
+        params = {
+            "exportados": True,
+            "deshabilitar_callback": False,
+            "fechaDesdeOperacion": date_since.strftime("%d/%m/%Y"),
+            "fechaHastaOperacion": date_until.strftime("%d/%m/%Y"),
+            "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
+        }
+
+        data = self._simple_post_request(access_data, url, params)
+
+        event_data = {
+            "event": "lectura_intradia",
+            "date_since": date_since.strftime("%Y/%m/%d"),
+            "date_until": date_until.strftime("%Y/%m/%d"),
+            "provider_id": provider_id.id,
+            "access_data": access_data
+        }
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de transacciones enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'lectura_intradia'
+        })
+
+    def _get_closing_transactions(self, access_data, date_since, date_until, provider_id):
         """Get closing transactions from bankingplay."""
         url = BANKINPLAY_ENDPOINT_V1 + "/statement/lectura_cierre"
 
@@ -338,14 +316,70 @@ class BankinPlayInterface(models.AbstractModel):
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
         }
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, params))
-        transactions = self._get_transactions_from_data(data)
-        return transactions
+        data = self._simple_post_request(access_data, url, params)
 
-    def manage_lectura_intradia_callback(self, data, event_data):
+        event_data = {
+            "event": "lectura_cierre",
+            "date_since": date_since.strftime("%Y/%m/%d"),
+            "date_until": date_until.strftime("%Y/%m/%d"),
+            "provider_id": provider_id.id,
+            "access_data": access_data
+        }
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de transacciones enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'lectura_cierre'
+        })
+
+    def _get_card_transactions(self, access_data, date_since, date_until, provider_id):
+        """Get transactions from bankingplay, using last_identifier as pointer.
+
+        Note that Ponto has the transactions in descending order. The first
+        transaction, retrieved by not passing an identifier, is the latest
+        present in Ponto. If you read transactions 'after' a certain identifier
+        (Ponto id), you will get transactions with an earlier date.
+        """
+        url = BANKINPLAY_ENDPOINT_V1 + "/movimientoTarjetaApi/lectura_tarjeta"
+
+        params = {
+            "exportados": True,
+            "deshabilitar_callback": False,
+            "fechaDesde": date_since.strftime("%d/%m/%Y"),
+            "fechaHasta": date_until.strftime("%d/%m/%Y"),
+            "sociedades": [access_data.get("bankinplay_company_card")] if access_data.get("bankinplay_company_card", False) else []
+        }
+
+        data = self._simple_post_request(access_data, url, params)
+
+        event_data = {
+            "event": "lectura_tarjeta",
+            "date_since": date_since.strftime("%Y/%m/%d"),
+            "date_until": date_until.strftime("%Y/%m/%d"),
+            "provider_id": provider_id.id,
+            "access_data": access_data
+        }
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de transacciones enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'lectura_tarjeta'
+        })
+
+    def manage_lectura_callback(self, transactions, event_data):
         """Manage the callback for intraday transactions."""
-        transactions = self._get_transactions_from_data(data)
         provider_id = self.env["online.bank.statement.provider"].browse(
             event_data.get("provider_id")
         )
@@ -371,3 +405,72 @@ class BankinPlayInterface(models.AbstractModel):
         )
 
         return True
+
+    def manage_lectura_cierre_callback(self, data, event_data):
+        """Manage the callback for intraday transactions."""
+        transactions = self._get_transactions_from_data(data)
+        self.manage_lectura_callback(transactions, event_data)
+
+        return True
+
+    def manage_lectura_intradia_callback(self, data, event_data):
+        """Manage the callback for intraday transactions."""
+        transactions = self._get_transactions_from_data(data)
+        self.manage_lectura_callback(transactions, event_data)
+
+        return True
+
+    def manage_lectura_tarjeta_callback(self, data, event_data):
+        """Manage the callback for intraday transactions."""
+        transactions = self._get_card_transactions(data)
+        provider_id = self.env["online.bank.statement.provider"].browse(
+            event_data.get("provider_id")
+        )
+
+        lines = []
+        lines.extend(transactions)
+        new_transactions = []
+        sequence = 0
+        for transaction in lines:
+            sequence += 1
+            vals_line = provider_id._bankinplay_get_card_transaction_vals(
+                transaction, sequence)
+            new_transactions.append(vals_line)
+
+        statement_date_since = datetime.strptime(
+            event_data.get("date_since"), "%Y/%m/%d")
+        statement_date_until = datetime.strptime(
+            event_data.get("date_until"), "%Y/%m/%d")
+
+        provider_id._create_or_update_statement(
+            (new_transactions, {}), statement_date_since, statement_date_until
+        )
+
+        return True
+
+    def manage_generic_callback(self, data):
+        signature = data.get('signature')
+        response_id = data.get('responseId')
+
+        request_id = self.env['bankinplay.log'].sudo().search(
+            [('response_id', '=', response_id),
+             ('signature', '=', signature)])
+
+        event_data = json.loads(request_id.event_data)
+        access_data = event_data.get('access_data')
+
+        desencrypt_data = self._desencrypt_data(
+            data, access_data)
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'response',
+            'request_data': '',
+            'response_data': data,
+            'desencrypt_data': desencrypt_data,
+            'status': 'pending',
+            'notes': 'Callback - lectura_intradia',
+            'response_id': response_id,
+            'signature': signature,
+        })
+
+        return log_entry, desencrypt_data, request_id
