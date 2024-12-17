@@ -29,8 +29,7 @@ class CallbackController(http.Controller):
 
         request_id = request.env['bankinplay.log'].sudo().search(
             [('response_id', '=', response_id),
-             ('signature', '=', signature),
-             ('triggered_event', '=', 'lectura_intradia')], limit=1)
+             ('signature', '=', signature)])
 
         _logger.info("Request ID: %s", request_id)
         _logger.info("Request Event Data: %s", request_id.event_data)

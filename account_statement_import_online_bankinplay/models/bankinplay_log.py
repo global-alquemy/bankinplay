@@ -30,7 +30,6 @@ class BankinplayLog(models.Model):
         ('pending', 'Pending'),
     ], string='Status', default='pending')
 
-    triggered_event = fields.Char(string='Triggered Event')
     notes = fields.Char(string='Notes')
 
     def set_status(self, status):
