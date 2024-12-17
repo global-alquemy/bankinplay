@@ -9,6 +9,8 @@
                 <field name="status"/>
                 <field name="request_data"/>
                 <field name="response_data"/>
+                <field name="response_id"/>
+                <field name="signature"/>
             </tree>
         </field>
     </record>
@@ -23,6 +25,8 @@
                         <field name="date_time" readonly="1"/>
                         <field name="operation_type"/>
                         <field name="status"/>
+                        <field name="response_id"/>
+                        <field name="signature"/>
                     </group>
                     <group>
                         <field name="request_data"/>
