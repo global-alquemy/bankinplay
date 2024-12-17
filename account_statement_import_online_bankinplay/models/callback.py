@@ -32,7 +32,7 @@ class CallbackController(http.Controller):
              ('signature', '=', signature)])
 
         event_data = json.loads(request_id.event_data)
-        access_data = event_data.access_data
+        access_data = event_data.get('access_data')
 
         _logger.info("Request ID: %s", request_id)
         _logger.info("Request Event Data: %s", request_id.event_data)
