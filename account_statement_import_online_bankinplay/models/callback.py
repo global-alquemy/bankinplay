@@ -25,10 +25,15 @@ class CallbackController(http.Controller):
         # Acceder a parámetros específicos
         _data = data.get('data')
         signature = data.get('signature')
-        
         response_id = data.get('responseId')
 
-        desencrypt_data = interface_model._desencrypt_data(data)
+        request_id = request.env['bankinplay.log'].sudo().search(
+            [('response_id', '=', response_id),
+             ('signature', '=', signature),
+             ('triggered_event', '=', request_id.event_data.get('event'))])
+
+        desencrypt_data = interface_model._desencrypt_data(
+            data, request_id.get('event_data'))
 
         log_entry = request.env['bankinplay.log'].create({
             'operation_type': 'response',
@@ -40,9 +45,6 @@ class CallbackController(http.Controller):
             'response_id': response_id,
             'signature': signature,
         })
-
-        request_id = request.env['bankinplay.log'].sudo().search(
-            [('response_id', '=', response_id), ('signature', '=', signature), ('triggered_event', '=', request_id.event_data.get('event'))])
 
         if request_id:
             if request_id.event_data:
