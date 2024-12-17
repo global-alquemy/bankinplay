@@ -22,11 +22,15 @@ class BankinplayLog(models.Model):
         string='Datetime', default=lambda self: fields.Datetime.now(), readonly=True)
     request_data = fields.Text(string='Request Data')
     response_data = fields.Text(string='Response Data')
+    decrypt_data = fields.Text(string='Decrypt Data')
+    event_data = fields.Text(string='Event Data')
     status = fields.Selection([
         ('success', 'Success'),
         ('error', 'Error'),
         ('pending', 'Pending'),
     ], string='Status', default='pending')
+
+    triggered_event = fields.Char(string='Triggered Event')
     notes = fields.Char(string='Notes')
 
     def set_status(self, status):

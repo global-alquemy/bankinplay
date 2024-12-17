@@ -9,6 +9,7 @@
                 <field name="status"/>
                 <field name="request_data"/>
                 <field name="response_data"/>
+                <field name="decrypt_data"/>
                 <field name="response_id"/>
                 <field name="signature"/>
             </tree>
@@ -29,8 +30,12 @@
                         <field name="signature"/>
                     </group>
                     <group>
+                        <field name="triggered_event"/>
+                        <field name="event_data"/>
                         <field name="request_data"/>
                         <field name="response_data"/>
+                        <field name="decrypt_data"/>
+
                     </group>
                     <field name="notes"/>
                 </sheet>

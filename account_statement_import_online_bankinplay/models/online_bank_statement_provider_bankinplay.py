@@ -41,11 +41,11 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
     bankinplay_is_card = fields.Boolean(
         string='¿Es tarjeta?',
     )
-    
+
     bankinplay_card_number = fields.Char(
         string='Número de tarjeta',
     )
-    
+
     @api.model
     def _get_available_services(self):
         """Each provider model must register its service."""
@@ -82,22 +82,24 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
 
         if self.bankinplay_is_card:
             if self.bankinplay_card_number:
-                access_data = interface_model._set_access_card(access_data, self.bankinplay_card_number)
+                access_data = interface_model._set_access_card(
+                    access_data, self.bankinplay_card_number)
         elif self.account_number:
-            access_data = interface_model._set_access_account(access_data, self.account_number)
-    
-        if self.bankinplay_is_card:
-             interface_model._get_card_transactions(access_data, date_since, date_until)
-        elif self.bankinplay_import_type == "intraday":
-            interface_model._get_transactions(access_data, date_since, date_until)
-        else:
-            interface_model._get_closing_transactions(access_data, date_since, date_until)
+            access_data = interface_model._set_access_account(
+                access_data, self.account_number)
 
-    
+        if self.bankinplay_is_card:
+            interface_model._get_card_transactions(
+                access_data, date_since, date_until)
+        elif self.bankinplay_import_type == "intraday":
+            interface_model._get_transactions(
+                access_data, date_since, date_until, self)
+        else:
+            interface_model._get_closing_transactions(
+                access_data, date_since, date_until)
+
     def get_keys_from_company(self):
         self.ensure_one()
         company = self.company_id
         self.username = company.bankinplay_apikey
         self.password = company.bankinplay_apisecret
-
-        

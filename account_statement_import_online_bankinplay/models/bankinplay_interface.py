@@ -154,7 +154,7 @@ class BankinPlayInterface(models.AbstractModel):
             % (account_number, data)
         )
 
-    def _get_transactions(self, access_data, date_since, date_until):
+    def _get_transactions(self, access_data, date_since, date_until, provider_id):
         """Get transactions from bankingplay, using last_identifier as pointer.
 
         Note that Ponto has the transactions in descending order. The first
@@ -174,6 +174,13 @@ class BankinPlayInterface(models.AbstractModel):
 
         data = self._simple_post_request(access_data, url, params)
 
+        event_data = {
+            "event": "lectura_intradia",
+            "date_since": date_since,
+            "date_until": date_until,
+            "provider_id": provider_id.id
+        }
+
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
@@ -182,6 +189,7 @@ class BankinPlayInterface(models.AbstractModel):
             'notes': 'Petición de transacciones enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
             'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data)
         })
 
     def _get_card_transactions(self, access_data, date_since, date_until):
@@ -332,3 +340,15 @@ class BankinPlayInterface(models.AbstractModel):
             access_data, self._post_request(access_data, url, params))
         transactions = self._get_transactions_from_data(data)
         return transactions
+
+    def manage_lectura_intradia_callback(self, data, event_data):
+        """Manage the callback for intraday transactions."""
+        transactions = self._get_transactions_from_data(data)
+        provider_id = self.env["account.online.provider"].browse(
+            event_data.get("provider_id")
+        )
+        statement_date_since = event_data.get("date_since")
+        statement_date_until = event_data.get("date_until")
+        provider_id._create_or_update_statement(
+            transactions, statement_date_since, statement_date_until
+        )
