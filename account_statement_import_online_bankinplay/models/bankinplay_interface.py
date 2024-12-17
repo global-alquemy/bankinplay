@@ -155,8 +155,12 @@ class BankinPlayInterface(models.AbstractModel):
             % (account_number, data)
         )
 
-    def _get_transactions_from_data(self, data):
+    def _get_transactions_from_data(self, data, event_data):
         """Get all transactions that are in the ponto response data."""
+        provider_id = self.env["online.bank.statement.provider"].browse(
+            event_data.get("provider_id")
+        )
+
         transactions = data.get("results", [])
         if not transactions:
             _logger.info(
@@ -166,7 +170,9 @@ class BankinPlayInterface(models.AbstractModel):
         elif isinstance(transactions, dict):
             movimientos = transactions.get("movimientos", [])
             if movimientos:
-                transactions = movimientos
+
+                transactions = [item for item in movimientos if item.get(
+                    'num_tarjeta') == provider_id.bankinplay_card_number]
 
         _logger.info(
             _("%d transactions present in response data"),
@@ -408,21 +414,21 @@ class BankinPlayInterface(models.AbstractModel):
 
     def manage_lectura_cierre_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
-        transactions = self._get_transactions_from_data(data)
+        transactions = self._get_transactions_from_data(data, event_data)
         self.manage_lectura_callback(transactions, event_data)
 
         return True
 
     def manage_lectura_intradia_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
-        transactions = self._get_transactions_from_data(data)
+        transactions = self._get_transactions_from_data(data, event_data)
         self.manage_lectura_callback(transactions, event_data)
 
         return True
 
     def manage_lectura_tarjeta_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
-        transactions = self._get_transactions_from_data(data)
+        transactions = self._get_transactions_from_data(data, event_data)
         self.manage_lectura_callback(transactions, event_data)
 
         return True
