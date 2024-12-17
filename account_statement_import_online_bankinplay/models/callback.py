@@ -21,14 +21,14 @@ class CallbackController(http.Controller):
 
         # Mostrar los datos en el log para depuración
 
-        _logger.info('Datos recibidos en webhook: %s', data)
+        # _logger.info('Datos recibidos en webhook: %s', data)
 
         # Acceder a parámetros específicos
-        data = data.get('data')
+        data_ = data.get('data')
         triggered_event = data.get('triggered_event')
 
         # Realizar alguna operación con los datos
-        _logger.info(f"Parámetro 1: {data}")
+        _logger.info(f"Parámetro 1: {data_}")
         _logger.info(f"Parámetro 1: {triggered_event}")
 
         # Responder al cliente
