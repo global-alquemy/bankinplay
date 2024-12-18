@@ -13,6 +13,7 @@
                 <field name="response_id"/>
                 <field name="signature"/>
                 <field name="triggered_event"/>
+                <field name="related_log_id"/>
             </tree>
         </field>
     </record>
@@ -29,12 +30,14 @@
                         <field name="status"/>
                         <field name="response_id"/>
                         <field name="signature"/>
+                        <field name="related_log_id"/>
                     </group>
                     <group>
                         <field name="event_data"/>
                         <field name="request_data"/>
                         <field name="response_data"/>
                         <field name="desencrypt_data"/>
+
                         <field name="triggered_event"/>
 
                     </group>
