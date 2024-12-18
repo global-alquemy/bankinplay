@@ -160,7 +160,7 @@ class BankinPlayInterface(models.AbstractModel):
         provider_id = self.env["online.bank.statement.provider"].browse(
             event_data.get("provider_id")
         )
-
+        trans = []
         transactions = data.get("results", [])
         if not transactions:
             _logger.info(
