@@ -161,14 +161,14 @@ class BankinPlayInterface(models.AbstractModel):
             event_data.get("provider_id")
         )
         trans = []
-        transactions = data.get("results", [])
-        if not transactions:
+        trans = data.get("results", [])
+        if not trans:
             _logger.info(
                 _("No transactions where found in data %s"),
                 data,
             )
-        elif isinstance(transactions, dict):
-            movimientos = transactions.get("movimientos", [])
+        elif isinstance(trans, dict):
+            movimientos = trans.get("movimientos", [])
             if movimientos:
                 trans = []
                 for movimiento in movimientos:
