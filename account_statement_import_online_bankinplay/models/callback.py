@@ -17,6 +17,10 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_intradia', auth='public', methods=['POST'], type='json')
     def callback_lectura_intradia(self, **kw):
+        _logger.info("Callback lectura intradía: %s", kw)
+        _logger.info("Request: %s", request)
+        _logger.info("Request.httprequest: %s", request.httprequest)
+        _logger.info("Request.jsonrequest: %s", request.jsonrequest)
         data = request.jsonrequest
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(data)
