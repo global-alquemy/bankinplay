@@ -459,7 +459,7 @@ class BankinPlayInterface(models.AbstractModel):
             'response_data': data,
             'desencrypt_data': desencrypt_data,
             'status': 'pending',
-            'notes': 'Callback - lectura_intradia',
+            'notes': '',
             'response_id': response_id,
             'signature': signature,
         })
