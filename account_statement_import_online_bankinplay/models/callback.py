@@ -17,14 +17,10 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_intradia', auth='public', methods=['POST'], type='json')
     def callback_lectura_intradia(self, **kw):
-        _logger.info("URL: %s", request.httprequest.url)
-        _logger.info("Método HTTP: %s", request.httprequest.method)
-        _logger.info("Encabezados: %s", dict(request.httprequest.headers))
-        _logger.info("Datos crudos: %s", request.httprequest.data.decode(
-            'utf-8', errors='ignore'))
-        _logger.info("Parámetros GET: %s", request.httprequest.args)
-        _logger.info("Formulario POST: %s", request.httprequest.form)
-        data = request.jsonrequest
+        data = json.loads(
+            request.httprequest.data.decode(
+                request.httprequest.charset or "utf-8")
+        )
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
@@ -62,7 +58,10 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_tarjeta', auth='public', methods=['POST'], type='json')
     def callback_lectura_tarjeta(self, **kw):
-        data = request.jsonrequest
+        data = json.loads(
+            request.httprequest.data.decode(
+                request.httprequest.charset or "utf-8")
+        )
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
