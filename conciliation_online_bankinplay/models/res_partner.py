@@ -18,9 +18,12 @@ _logger = logging.getLogger(__name__)
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
+    bankinplay_sent = fields.Boolean(string="Bankinplay sent", default=False)
+
     def bankinplay_send_partner(self):
-        company_id = self.env.company
-        access_data = company_id.check_bankinplay_connection()
-        interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_contact(access_data, self.id)
-        return data
+        for record in self:
+            company_id = record.env.company
+            access_data = company_id.check_bankinplay_connection()
+            interface_model = record.env["bankinplay.interface"]
+            interface_model._export_contacts(
+                access_data, [('id', '=', record.id)])

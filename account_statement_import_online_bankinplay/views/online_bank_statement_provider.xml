@@ -9,8 +9,11 @@
                 <group name="bankinplay" string="BankInPlay Config" attrs="{'invisible':[('service','!=','bankinplay')]}">
                     <field name="username" string="Api Key" />
                     <field name="password" string="Secret Key" />
+                    <button name="get_keys_from_company" string="Get keys from company" type="object" class="oe_highlight" />
                     <field name="bankinplay_date_field" />
                     <field name="bankinplay_import_type" />
+                    <field name="bankinplay_is_card" />
+                    <field name="bankinplay_card_number" attrs="{'invisible':[('bankinplay_is_card','=',False)]}"/>
                 </group>
             </xpath>
         </field>

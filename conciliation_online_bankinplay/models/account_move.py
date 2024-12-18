@@ -16,6 +16,14 @@ _logger = logging.getLogger(__name__)
 
 
 class AccountMove(models.Model):
+    _inherit = "account.move.line"
+
+    bankinplay_sent = fields.Boolean(
+        string="BankInPlay Sent",
+        help="BankInPlay Sent.",
+    )
+
+class AccountMove(models.Model):
     _inherit = "account.move"
 
     bankinplay_sent = fields.Boolean(
@@ -67,21 +75,6 @@ class AccountMove(models.Model):
         return data
     
     
-  
-        
-    
-    # def action_send_account_moves_bankinplay(self):
-    #     if self.filtered(lambda x: x.state != 'posted'):
-    #         raise UserError(_('You can only send posted moves to BankInPlay !'))
-        
-    #     for move in self:
-    #         name_job = "[BANKINPLAY] - FACTURA " + move.name
-    #         name_job_partner = "[BANKINPLAY] - FACTURA " + move.name + ' - ' + move.partner_id.name
-
-    #         #move.partner_id.with_delay(priority=30, max_retries=5, description=name_job_partner).bankinplay_send_partner()
-    #         move.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_send_move()
-
-
     def bankinplay_send_move(self):
         company_id = self.env.company
         access_data = company_id.check_bankinplay_connection()

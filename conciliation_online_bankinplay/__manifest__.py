@@ -10,7 +10,7 @@
     "website": "https://www.alquemy.es",
     "license": "AGPL-3",
     "installable": True,
-    "depends": ["account_statement_import_online_bankinplay", "queue_job"],
+    "depends": ["account_statement_import_online_bankinplay", "partner_manual_rank", "queue_job"],
     "data": [
         "data/cron.xml",
         "views/res_company.xml",
