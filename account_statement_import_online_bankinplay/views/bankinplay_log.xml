@@ -1,0 +1,59 @@
+<odoo>
+    <record id="view_bankinplay_log_tree" model="ir.ui.view">
+        <field name="name">bankinplay.log.tree</field>
+        <field name="model">bankinplay.log</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="date_time"/>
+                <field name="operation_type"/>
+                <field name="status"/>
+                <field name="request_data"/>
+                <field name="response_data"/>
+                <field name="desencrypt_data"/>
+                <field name="response_id"/>
+                <field name="signature"/>
+                <field name="triggered_event"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_log_form" model="ir.ui.view">
+        <field name="name">bankinplay.log.form</field>
+        <field name="model">bankinplay.log</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="date_time" readonly="1"/>
+                        <field name="operation_type"/>
+                        <field name="status"/>
+                        <field name="response_id"/>
+                        <field name="signature"/>
+                    </group>
+                    <group>
+                        <field name="event_data"/>
+                        <field name="request_data"/>
+                        <field name="response_data"/>
+                        <field name="desencrypt_data"/>
+                        <field name="triggered_event"/>
+
+                    </group>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Acción -->
+    <record id="action_bankinplay_log" model="ir.actions.act_window">
+        <field name="name">Logs de Bankinplay</field>
+        <field name="res_model">bankinplay.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p>Registro de peticiones y respuestas del sistema.</p>
+        </field>
+    </record>
+
+    <!-- Menú -->
+    <menuitem id="menu_bankinplay_log" name="Logs" parent="account.account_banks_menu" action="action_bankinplay_log" sequence="101"/>
+</odoo>
