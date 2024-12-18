@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Online Conciliation: BankInPlay</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        img {
+            border: 1px solid #ccc;
+            padding: 5px;
+            background-color: #f9f9f9;
+        }
+        ul {
+            list-style-type: none;
+        }
+        ul li::before {
+            content: "• ";
+            color: #2c3e50;
+        }
+        ol {
+            margin-left: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            font-size: 90%;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Online Conciliation: BankInPlay</h1>
+
+<p>Este módulo permite la sincronización bidireccional contable y analítica entre Odoo y Bankinplay.</p>
+
+<!-- Tabla de Contenidos -->
+<h2>Tabla de Contenidos</h2>
+<ul>
+    <li><a href="#configuracion">Configuración</a></li>
+</ul>
+
+<!-- Configuración -->
+<h2 id="configuracion">Configuración</h2>
+
+<p>Para el conector:</p>
+
+<ol>
+    <li>Ve a <em>Ajustes &gt; Compañías</em>.</li>
+    <li>Abre la compañía correspondiente.</li>
+    <li>Cambia a la pestaña <strong>Bankinplay</strong>.</li>
+    <li>Establece <strong>Api Key</strong> y <strong>Api Secret</strong>.</li>
+    <li>Guarda la configuración y pulsa <strong>Test Connection</strong>.</li>
+</ol>
+
+<!-- Inserta otra captura de pantalla si es necesario -->
+<img src="/configuracion_conciliacion_bankinplay.png" alt="Configuración conector bankinplay - Odoo" style="display:block; margin:auto; width:80%;">
+
+<p>Desde este formulario de configuración podrás exportar manualmente el <strong>Plan contable</strong>, <strong>Plan Analítico (solo de cuentas analíticas seleccionadas)</strong>, <strong>Terceros</strong> y <strong>Apuntes contables</strong></p>
+<p>En el momento de instalación del módulo, se crean las siguientes <strong>Acciones Planificadas</strong>:</p>
+
+<img src="/configuracion_cron_bankinplay.png" alt="Acciones planificadas conector bankinplay - Odoo" style="display:block; margin:auto; width:80%;">
+
+<p>Active las que considere necesarias si quiere un funcionamiento automático del conector.</p>
+
+</body>
+</html>
