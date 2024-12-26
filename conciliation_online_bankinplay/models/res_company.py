@@ -148,6 +148,8 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         data = interface_model._import_account_moves(access_data)
 
+        _logger.info("DATA: %s", data)
+
         for asiento in data.get('results').get('asientos'):
             statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(asiento.get('movimiento_id')) in x.unique_import_id)
             if statement_line and not statement_line.is_reconciled:
