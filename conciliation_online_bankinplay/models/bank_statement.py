@@ -2,11 +2,24 @@ from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_is_zero
 
+
 class BankStatementLine(models.Model):
     _inherit = 'account.bank.statement.line'
 
-    bankinplay_sent = fields.Boolean(string='Enviado a BankinPlay', default=False)
-    bankinplay_conciliation = fields.Boolean(string='Bankinplay conciliation', default=False)
+    bankinplay_sent = fields.Boolean(
+        string='Enviado a BankinPlay', default=False)
+    bankinplay_conciliation = fields.Boolean(
+        string='Bankinplay conciliation', default=False)
+    move_name = fields.Char(
+        string="Journal Entry Name",
+        readonly=True,
+        default=False,
+        copy=False,
+        help="Technical field holding the number given to the journal entry,"
+        "automatically set when the statement line is reconciled then stored"
+        "to set the same number again if the line is cancelled,"
+        "set to draft and re-processed again.",
+    )
 
     def process_reconciliation_oca(
         self, counterpart_aml_dicts=None, payment_aml_rec=None, new_aml_dicts=None
@@ -53,8 +66,10 @@ class BankStatementLine(models.Model):
             reconciliation, containing entries for the statement.line (1), the
             counterpart move lines (0..*) and the new move lines (0..*).
         """
-        payable_account_type = self.env.ref("account.data_account_type_payable")
-        receivable_account_type = self.env.ref("account.data_account_type_receivable")
+        payable_account_type = self.env.ref(
+            "account.data_account_type_payable")
+        receivable_account_type = self.env.ref(
+            "account.data_account_type_receivable")
         suspense_moves_mode = self._context.get("suspense_moves_mode")
         counterpart_aml_dicts = counterpart_aml_dicts or []
         payment_aml_rec = payment_aml_rec or self.env["account.move.line"]
@@ -68,7 +83,8 @@ class BankStatementLine(models.Model):
             raise UserError(_("A selected move line was already reconciled."))
         for aml_dict in counterpart_aml_dicts:
             if aml_dict["move_line"].reconciled and not suspense_moves_mode:
-                raise UserError(_("A selected move line was already reconciled."))
+                raise UserError(
+                    _("A selected move line was already reconciled."))
             if isinstance(aml_dict["move_line"], int):
                 aml_dict["move_line"] = aml_obj.browse(aml_dict["move_line"])
 
@@ -77,7 +93,8 @@ class BankStatementLine(models.Model):
             if aml_dict.get("tax_ids") and isinstance(aml_dict["tax_ids"][0], int):
                 # Transform the value in the format required for One2many and
                 # Many2many fields
-                aml_dict["tax_ids"] = [(4, id, None) for id in aml_dict["tax_ids"]]
+                aml_dict["tax_ids"] = [(4, id, None)
+                                       for id in aml_dict["tax_ids"]]
 
             user_type_id = (
                 self.env["account.account"]
@@ -145,7 +162,8 @@ class BankStatementLine(models.Model):
 
         # Create liquidity line
         liquidity_aml_dict = self._prepare_liquidity_move_line_vals()
-        aml_obj.with_context(check_move_validity=False).create(liquidity_aml_dict)
+        aml_obj.with_context(check_move_validity=False).create(
+            liquidity_aml_dict)
 
         self.sequence = self.statement_id.line_ids.ids.index(self.id) + 1
         self.move_id.ref = self._get_move_ref(self.statement_id.name)
@@ -182,7 +200,8 @@ class BankStatementLine(models.Model):
         # Create write-offs
         wo_aml = self.env["account.move.line"]
         for aml_dict in new_aml_dicts:
-            wo_aml |= aml_obj.with_context(check_move_validity=False).create(aml_dict)
+            wo_aml |= aml_obj.with_context(
+                check_move_validity=False).create(aml_dict)
         analytic_wo_aml = wo_aml.filtered(
             lambda l: l.analytic_account_id or l.analytic_tag_ids
         )
@@ -195,7 +214,8 @@ class BankStatementLine(models.Model):
             aml_dict["account_id"] = aml_dict["move_line"].account_id.id
 
             counterpart_move_line = aml_dict.pop("move_line")
-            new_aml = aml_obj.with_context(check_move_validity=False).create(aml_dict)
+            new_aml = aml_obj.with_context(
+                check_move_validity=False).create(aml_dict)
 
             aml_to_reconcile.append((new_aml, counterpart_move_line))
 
@@ -242,7 +262,8 @@ class BankStatementLine(models.Model):
         company = self.company_id
 
         if st_line_currency.id != company_currency.id:
-            aml_dict["amount_currency"] = aml_dict["debit"] - aml_dict["credit"]
+            aml_dict["amount_currency"] = aml_dict["debit"] - \
+                aml_dict["credit"]
             aml_dict["currency_id"] = st_line_currency.id
             if (
                 self.currency_id
@@ -290,4 +311,3 @@ class BankStatementLine(models.Model):
     def _check_invoice_state(self, invoice):
         if invoice.is_invoice(include_receipts=True):
             invoice._compute_amount()
-
