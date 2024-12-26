@@ -10,7 +10,7 @@
     "website": "https://www.alquemy.es",
     "license": "AGPL-3",
     "installable": True,
-    "depends": ["account_statement_import_online", "account_reconciliation_widget"],
+    "depends": ["account_statement_import_online"],
     "data": [
         "security/ir.model.access.csv",
         "views/online_bank_statement_provider.xml",

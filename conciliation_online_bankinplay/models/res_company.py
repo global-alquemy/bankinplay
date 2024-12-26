@@ -132,7 +132,7 @@ class ResCompany(models.Model):
                                             'move_line': line,
                                         })
                        
-                                moves = statement_line.process_reconciliation(
+                                moves = statement_line.process_reconciliation_oca(
                                     counterparts,
                                     [],
                                     []
@@ -198,7 +198,7 @@ class ResCompany(models.Model):
                                 
                             })
 
-                    moves = statement_line.process_reconciliation(
+                    moves = statement_line.process_reconciliation_oca(
                             [],
                             [],
                             new_line_vals
