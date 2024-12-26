@@ -99,8 +99,8 @@ class ResCompany(models.Model):
         data = interface_model._import_conciliate_documents(access_data)
         if data.get('sociedades'):
             for conciliation in data.get('sociedades')[0].get('documentos'):
-                statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
-                if statement_line and not statement_line.is_reconciled:
+                statement_line = self.env['account.bank.statement.line'].search([]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
+                if statement_line:
                     journal_id = statement_line.journal_id
                     cuenta_bancaria = conciliation.get('cuenta_bancaria')
                     number = (cuenta_bancaria + '-'
@@ -111,10 +111,8 @@ class ResCompany(models.Model):
                     if statement_line.unique_import_id == number:
                         
                         statement_line.line_ids.remove_move_reconcile()
-                        statement_line.payment_ids.unlink() 
-
-                        line_vals = []
-
+                        statement_line.payment_ids.unlink()
+                        
                         payable_account_type = self.env.ref("account.data_account_type_payable")
                         receivable_account_type = self.env.ref("account.data_account_type_receivable")
 
