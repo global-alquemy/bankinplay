@@ -305,12 +305,12 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = self.env.company
 
         
-        document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', True), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
+        document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
         
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
-        # partner_ids = document_ids.mapped('partner_id')
-        # if partner_ids:
-        #     self._export_contacts(access_data, [('id', 'in', partner_ids.ids)])
+        partner_ids = document_ids.mapped('partner_id')
+        if partner_ids:
+            self._export_contacts(access_data, [('id', 'in', partner_ids.ids)])
         
         documents = []
         for d in document_ids:
