@@ -99,7 +99,7 @@ class ResCompany(models.Model):
         data = interface_model._import_conciliate_documents(access_data)
         if data.get('sociedades'):
             for conciliation in data.get('sociedades')[0].get('documentos'):
-                statement_line = self.env['account.bank.statement.line'].search([]).filtered(lambda x: str('-' + conciliation.get('id_movimiento')) in x.unique_import_id)
+                statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
                 if statement_line:
                     
                     journal_id = statement_line.journal_id
