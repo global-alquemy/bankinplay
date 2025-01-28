@@ -60,7 +60,7 @@ class AccountMove(models.Model):
     
    
     
-    def bankinplay_cancel_move(self):
+    def (self):
         company_id = self.env.company
         access_data = company_id.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]

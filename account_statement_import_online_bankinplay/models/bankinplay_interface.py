@@ -76,9 +76,22 @@ class BankinPlayInterface(models.AbstractModel):
         }
 
     def _get_pending_async_request(self, access_data, data, params=[]):
+        
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'response',
+            #'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'success',
+            #'notes': json.dumps(headers),
+            # 'response_id': data.get('responseId', ''),
+            # 'signature': data.get('signature', ''),
+            #'event_data': json.dumps(event_data),
+            #'triggered_event': str(url)
+        })
+
         responseId = data.get('responseId', '')
         if not responseId:
-            raise UserError('No se han podido traer las transacciones')
+            raise UserError('La petición no ha sido aceptada por BankInPlay')
 
         url = BANKINPLAY_ENDPOINT_V1 + "/statement/status/" + responseId
         data = self._get_request(access_data, url, params)
@@ -214,6 +227,19 @@ class BankinPlayInterface(models.AbstractModel):
         _logger.info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
+
+        log_entry = self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            #'response_data': json.dumps(data),
+            'status': 'success',
+            'notes': json.dumps(headers),
+            # 'response_id': data.get('responseId', ''),
+            # 'signature': data.get('signature', ''),
+            #'event_data': json.dumps(event_data),
+            'triggered_event': str(url)
+        })
+
         response = requests.post(
             url, params=params, headers=headers, data=data)
         return self._get_response_data(response, access_data)
@@ -243,6 +269,8 @@ class BankinPlayInterface(models.AbstractModel):
         """Get response data for GET or POST request."""
         _logger.info(_("HTTP answer code %s from BankInPlay"),
                      response.status_code)
+        
+        
         if response.status_code not in (200, 201):
             raise UserError(
                 _("Server returned status code %s: %s")
@@ -272,8 +300,32 @@ class BankinPlayInterface(models.AbstractModel):
                              AES.MODE_CBC, iv.encode('utf-8'))
             decrypted_bytes = unpad(cipher.decrypt(
                 encrypted_bytes), AES.block_size)
+            
+            log_entry = self.env['bankinplay.log'].create({
+                'operation_type': 'response',
+                #'request_data': json.dumps(params),
+                'response_data': decrypted_bytes.decode('utf-8'),
+                'status': 'success',
+                #'notes': json.dumps(headers),
+                # 'response_id': data.get('responseId', ''),
+                # 'signature': data.get('signature', ''),
+                #'event_data': json.dumps(event_data),
+                #'triggered_event': str(url)
+            })
+
             return json.loads(decrypted_bytes.decode('utf-8'))
         else:
+            log_entry = self.env['bankinplay.log'].create({
+                'operation_type': 'response',
+                #'request_data': json.dumps(params),
+                'response_data': json.dumps(data),
+                'status': 'success',
+                #'notes': json.dumps(headers),
+                # 'response_id': data.get('responseId', ''),
+                # 'signature': data.get('signature', ''),
+                #'event_data': json.dumps(event_data),
+                #'triggered_event': str(url)
+            })
             return data
 
     def _get_transactions(self, access_data, date_since, date_until, provider_id):
