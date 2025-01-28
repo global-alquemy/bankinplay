@@ -19,14 +19,11 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     bankinplay_sent = fields.Boolean(string="Bankinplay sent", default=False)
-    bankinplay_update = fields.Boolean(string="Bankinplay update", default=False)
 
     def bankinplay_send_partner(self):
         for record in self:
-            if not record.bankinplay_sent or record.bankinplay_update:
-                company_id = record.env.company
-                access_data = company_id.check_bankinplay_connection()
-                interface_model = record.env["bankinplay.interface"]
-                interface_model._export_contacts(access_data, [('id', '=', record.id)])
-               
-            
+            company_id = record.env.company
+            access_data = company_id.check_bankinplay_connection()
+            interface_model = record.env["bankinplay.interface"]
+            interface_model._export_contacts(
+                access_data, [('id', '=', record.id)])

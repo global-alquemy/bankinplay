@@ -55,7 +55,6 @@ class BankinPlayInterface(models.AbstractModel):
         date = start_date.strftime("%d/%m/%Y")
         account = self.env['account.account'].search([], limit=1)
         
-
         account_plan = self.env['account.account'].search([])
         code_size = len(account_plan[0].code)
         accounts = []
@@ -186,8 +185,7 @@ class BankinPlayInterface(models.AbstractModel):
                 partner = self.env['res.partner'].search([]).filtered(lambda x: tercero.get('nif', False) in x.vat if x.vat else False)
                 if partner:
                     partner.write({
-                        "bankinplay_sent": True,
-                        "bankinplay_update": False
+                        "bankinplay_sent": True
                     })
 
         return data
@@ -302,7 +300,6 @@ class BankinPlayInterface(models.AbstractModel):
     
 
 
-
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = self.env.company
@@ -400,6 +397,7 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._post_request(access_data, url, {}, json.dumps(params))
         analytic_plan_id = data.get('plan_analitico_id', '')
         if not analytic_plan_id:
+            
             raise UserError('No se han podido dar de alta el plan analitico')
         
         return analytic_plan_id

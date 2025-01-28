@@ -15,11 +15,56 @@ class CallbackController(http.Controller):
         _logger.info("Callback estado: %s", kw)
         return {}
 
+    @http.route('/webhook/lectura_cierre', auth='public', methods=['POST'], type='json')
+    def callback_lectura_cierre(self, **kw):
+        data = json.loads(
+            request.httprequest.data.decode(
+                request.httprequest.charset or "utf-8")
+        )
+        interface_model = request.env["bankinplay.interface"]
+        log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
+            data)
+        # Obtener los datos del cuerpo de la solicitud
+        event_data = json.loads(request_id.event_data)
+
+        if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
+            request_id.write({
+                'status': 'error',
+                'related_log_id': log_entry.id,
+            })
+            log_entry.write({
+                'status': 'error',
+                'related_log_id': request_id.id,
+            })
+
+            return {"status": "success", "message": "Datos recibidos correctamente"}
+
+        response = interface_model.sudo().manage_lectura_cierre_callback(
+            desencrypt_data, event_data
+        )
+
+        if response:
+            request_id.write({
+                'status': 'success',
+                'related_log_id': log_entry.id,
+            })
+            log_entry.write({
+                'status': 'success',
+                'related_log_id': request_id.id,
+            })
+
+        # Responder al cliente
+        return {"status": "success", "message": "Datos recibidos correctamente"}
+
     @http.route('/webhook/lectura_intradia', auth='public', methods=['POST'], type='json')
     def callback_lectura_intradia(self, **kw):
-        data = request.jsonrequest
+        data = json.loads(
+            request.httprequest.data.decode(
+                request.httprequest.charset or "utf-8")
+        )
         interface_model = request.env["bankinplay.interface"]
-        log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(data)
+        log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
+            data)
         # Obtener los datos del cuerpo de la solicitud
         event_data = json.loads(request_id.event_data)
 
@@ -54,9 +99,13 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_tarjeta', auth='public', methods=['POST'], type='json')
     def callback_lectura_tarjeta(self, **kw):
-        data = request.jsonrequest
+        data = json.loads(
+            request.httprequest.data.decode(
+                request.httprequest.charset or "utf-8")
+        )
         interface_model = request.env["bankinplay.interface"]
-        log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(data)
+        log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
+            data)
         # Obtener los datos del cuerpo de la solicitud
         event_data = json.loads(request_id.event_data)
 
@@ -88,5 +137,3 @@ class CallbackController(http.Controller):
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
-
-

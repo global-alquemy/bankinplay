@@ -55,6 +55,5 @@
     </record>
 
     <!-- Menú -->
-    <menuitem id="menu_bankinplay_root" name="Bankinplay Logs" sequence="10"/>
-    <menuitem id="menu_bankinplay_log" name="Logs" parent="menu_bankinplay_root" action="action_bankinplay_log" sequence="10"/>
+    <menuitem id="menu_bankinplay_log" name="Logs" parent="account.account_banks_menu" action="action_bankinplay_log" sequence="101"/>
 </odoo>
