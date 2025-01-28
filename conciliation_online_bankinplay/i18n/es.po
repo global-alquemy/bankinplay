@@ -1,0 +1,324 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* conciliation_online_bankinplay
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-01-28 18:56+0000\n"
+"PO-Revision-Date: 2025-01-28 18:56+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/bank_statement.py:0
+#: code:addons/conciliation_online_bankinplay/models/bank_statement.py:0
+#, python-format
+msgid "A selected move line was already reconciled."
+msgstr "Una línea de movimiento seleccionada ya estaba conciliada."
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Account %s not found in the system."
+msgstr "La cuenta %s no se encontró en el sistema."
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Account plan has been exported successfully."
+msgstr "El plan de cuentas se exportó con éxito."
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Analytic Account %s not found in the system."
+msgstr "La cuenta analítica %s no se encontró en el sistema."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_analytic_line_id
+msgid "Analytic Line ID"
+msgstr "ID de Línea Analítica"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_analytic_line_id
+msgid "Analytic Line ID for BankInPlay."
+msgstr "ID de Línea Analítica para BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_analytic_plan_id
+msgid "Analytic Plan ID"
+msgstr "ID de Plan Analítico"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_analytic_plan_id
+msgid "Analytic Plan ID for BankInPlay."
+msgstr "ID de Plan Analítico para BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Analytic plan has been exported successfully."
+msgstr "El plan analítico se exportó con éxito."
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Apuntes contables"
+msgstr "Apuntes contables"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_account_bank_statement_line
+msgid "Bank Statement Line"
+msgstr "Línea de extracto bancario"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_enabled
+msgid "BankInPlay Enabled"
+msgstr "BankInPlay Activado"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_move__bankinplay_sent
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_move_line__bankinplay_sent
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_payment__bankinplay_sent
+msgid "BankInPlay Sent"
+msgstr "Enviado a BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_account_move__bankinplay_sent
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_account_move_line__bankinplay_sent
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_account_payment__bankinplay_sent
+msgid "BankInPlay Sent."
+msgstr "Enviado a BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_start_date
+msgid "BankInPlay Start Date"
+msgstr "Fecha de Inicio BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_start_date
+msgid "Banking Play Init Date."
+msgstr "Fecha de inicio de BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_bank_statement_line__bankinplay_conciliation
+msgid "Bankinplay conciliation"
+msgstr "Conciliación BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_partner__bankinplay_sent
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_users__bankinplay_sent
+msgid "Bankinplay sent"
+msgstr "Enviado a BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_bankinplay_export_account_plan_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_bankinplay_export_account_plan
+#: model:ir.cron,name:conciliation_online_bankinplay.process_bankinplay_export_account_plan
+msgid "Bankinplay: Export account plan"
+msgstr "BankInPlay: Exportar plan de cuentas"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_bankinplay_export_analytic_plan_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_bankinplay_export_analytic_plan
+#: model:ir.cron,name:conciliation_online_bankinplay.process_bankinplay_export_analytic_plan
+msgid "Bankinplay: Export analytic plan"
+msgstr "BankInPlay: Exportar plan analítico"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_bankinplay_export_account_move_line_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_bankinplay_export_account_move_line
+#: model:ir.cron,name:conciliation_online_bankinplay.process_bankinplay_export_account_move_line
+msgid "Bankinplay: Export conciliate moves"
+msgstr "BankInPlay: Exportar movimientos conciliados"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_export_third_documents_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_export_third_documents
+#: model:ir.cron,name:conciliation_online_bankinplay.process_export_third_documents
+msgid "Bankinplay: Export third documents"
+msgstr "BankInPlay: Exportar documentos de terceros"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_bankinplay_import_account_moves_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_bankinplay_import_account_moves
+#: model:ir.cron,name:conciliation_online_bankinplay.process_bankinplay_import_account_moves
+msgid "Bankinplay: Import account moves"
+msgstr "BankInPlay: Importar movimientos contables"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.actions.server,name:conciliation_online_bankinplay.process_bankinplay_import_documents_ir_actions_server
+#: model:ir.cron,cron_name:conciliation_online_bankinplay.process_bankinplay_import_documents
+#: model:ir.cron,name:conciliation_online_bankinplay.process_bankinplay_import_documents
+msgid "Bankinplay: Import third documents"
+msgstr "BankInPlay: Importar documentos de terceros"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_res_company
+msgid "Companies"
+msgstr "Compañías"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_enabled
+msgid "Enable BankInPlay Integration."
+msgstr "Habilitar la integración con BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_bank_statement_line__bankinplay_sent
+msgid "Enviado a BankinPlay"
+msgstr "Enviado a BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/account_move.py:0
+#: code:addons/conciliation_online_bankinplay/models/account_move.py:0
+#, python-format
+msgid "Error: %sdocumentosdescription"
+msgstr "Error: %s descripción del documento"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Export Account Plan"
+msgstr "Exportar Plan de Cuentas"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Export Analytic Plan"
+msgstr "Exportar Plan Analítico"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Export Documents"
+msgstr "Exportar Documentos"
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#: code:addons/conciliation_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Export Succeded!"
+msgstr "¡Exportación Exitosa!"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Exportar Apuntes contables"
+msgstr "Exportar Apuntes Contables"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Import Account Moves"
+msgstr "Importar Movimientos Contables"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Import Documents"
+msgstr "Importar Documentos"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_bankinplay_interface
+msgid "Interface to all interactions with Bankinplay API"
+msgstr "Interfaz para todas las interacciones con la API de BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_account_move
+msgid "Journal Entry"
+msgstr "Asiento de Diario"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_account_bank_statement_line__move_name
+msgid "Journal Entry Name"
+msgstr "Nombre del Asiento de Diario"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_account_move_line
+msgid "Journal Item"
+msgstr "Apunte Contable"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_journal_ids
+msgid "Journals"
+msgstr "Diarios"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_journal_ids
+msgid "Journals to export to BankInPlay"
+msgstr "Diarios a exportar a BankInPlay"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_last_syncdate
+msgid "Last Sync Date"
+msgstr "Última Fecha de Sincronización"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_last_syncdate
+msgid "Last Sync Date."
+msgstr "Última Fecha de Sincronización."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_manage_third_accounts
+msgid "Manage Third Party Accounts"
+msgstr "Gestionar Cuentas de Terceros"
+
+#. module: conciliation_online_bankinplay
+#: code:addons/conciliation_online_bankinplay/models/bank_statement.py:0
+#, python-format
+msgid ""
+"Operation not allowed. Since your statement line already received a number "
+"(%s), you cannot reconcile it entirely with existing journal entries "
+"otherwise it would make a gap in the numbering. You should book an entry and"
+" make a regular revert of it in case you want to cancel it."
+msgstr ""
+"Operación no permitida. Como la línea del extracto ya recibió un número (%s), "
+"no puede conciliarla completamente con entradas de diario existentes, ya que "
+"esto crearía un hueco en la numeración. Debería registrar una entrada y "
+"realizar una reversión regular si desea cancelarla."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,field_description:conciliation_online_bankinplay.field_res_company__bankinplay_partner_domain
+msgid "Partner Domain"
+msgstr "Dominio del Socio"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_partner_domain
+msgid "Partner Domain."
+msgstr "Dominio del Socio."
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Plan analítico"
+msgstr "Plan Analítico"
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Plan contable"
+msgstr "Plan Contable"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_account_bank_statement_line__move_name
+msgid ""
+"Technical field holding the number given to the journal entry,automatically "
+"set when the statement line is reconciled then storedto set the same number "
+"again if the line is cancelled,set to draft and re-processed again."
+msgstr ""
+"Campo técnico que contiene el número asignado al asiento de diario, "
+"establecido automáticamente cuando la línea del extracto está conciliada y "
+"almacenado para establecer el mismo número si la línea es cancelada, puesta "
+"en borrador y procesada de nuevo."
+
+#. module: conciliation_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:conciliation_online_bankinplay.bankinplay_conciliation_view_company_form
+msgid "Terceros"
+msgstr "Terceros"
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model.fields,help:conciliation_online_bankinplay.field_res_company__bankinplay_manage_third_accounts
+msgid "Use generic accounts for BankInPlay."
+msgstr "Usar cuentas genéricas para BankInPlay."
+
+#. module: conciliation_online_bankinplay
+#: model:ir.model,name:conciliation_online_bankinplay.model_res_partner
+msgid "res_partner"
+msgstr "Socio"
