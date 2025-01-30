@@ -14,7 +14,6 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-
 class AccountMove(models.Model):
     _inherit = "account.move.line"
 
@@ -23,68 +22,68 @@ class AccountMove(models.Model):
         help="BankInPlay Sent.",
     )
 
-class AccountMove(models.Model):
-    _inherit = "account.move"
+# class AccountMove(models.Model):
+#     _inherit = "account.move"
 
-    bankinplay_sent = fields.Boolean(
-        string="BankInPlay Sent",
-        help="BankInPlay Sent.",
-    )
+#     bankinplay_sent = fields.Boolean(
+#         string="BankInPlay Sent",
+#         help="BankInPlay Sent.",
+#     )
 
-    def check_bankinplay_move(self):
-        for move in self:
-            if move.company_id.bankinplay_enabled:
-                if move.journal_id in move.company_id.bankinplay_journal_ids:
-                    return True
-        return False
+#     def check_bankinplay_move(self):
+#         for move in self:
+#             if move.company_id.bankinplay_enabled:
+#                 if move.journal_id in move.company_id.bankinplay_journal_ids:
+#                     return True
+#         return False
 
-    def action_post(self):
-        res = super(AccountMove, self).action_post()
-        if self.check_bankinplay_move():
-            for move in self:
-                if move.state == 'posted':
-                    name_job = "[BANKINPLAY] - FACTURA " + move.name
-                    move.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_send_move()
-        return res
+#     def action_post(self):
+#         res = super(AccountMove, self).action_post()
+#         if self.check_bankinplay_move():
+#             for move in self:
+#                 if move.state == 'posted':
+#                     name_job = "[BANKINPLAY] - FACTURA " + move.name
+#                     move.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_send_move()
+#         return res
 
-    def button_draft(self):
-        res = super(AccountMove, self).button_draft()
+#     def button_draft(self):
+#         res = super(AccountMove, self).button_draft()
 
-        if self.check_bankinplay_move():
-            for move in self:
-                if move.bankinplay_sent:
-                    name_job = "[BANKINPLAY] - CANCELAR FACTURA " + move.name
-                    move.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_cancel_move()
+#         if self.check_bankinplay_move():
+#             for move in self:
+#                 if move.bankinplay_sent:
+#                     name_job = "[BANKINPLAY] - CANCELAR FACTURA " + move.name
+#                     move.with_delay(priority=20, max_retries=5, description=name_job).bankinplay_cancel_move()
 
-        return res
+#         return res
     
    
     
-    def (self):
-        company_id = self.env.company
-        access_data = company_id.check_bankinplay_connection()
-        interface_model = self.env["bankinplay.interface"]
-        data = interface_model._cancel_document(access_data, self.id)
-        if data:
-            if data.get('documentos', False):
-                estado = data['documentos'][0]['estado']
-                if estado == 'correcto':
-                    self.bankinplay_sent = True
-                else:
-                    raise UserError(_('Error: %s' % data['documentos'][0]['description']))
-        return data
+#     def (self):
+#         company_id = self.env.company
+#         access_data = company_id.check_bankinplay_connection()
+#         interface_model = self.env["bankinplay.interface"]
+#         data = interface_model._cancel_document(access_data, self.id)
+#         if data:
+#             if data.get('documentos', False):
+#                 estado = data['documentos'][0]['estado']
+#                 if estado == 'correcto':
+#                     self.bankinplay_sent = True
+#                 else:
+#                     raise UserError(_('Error: %s' % data['documentos'][0]['description']))
+#         return data
     
     
-    def bankinplay_send_move(self):
-        company_id = self.env.company
-        access_data = company_id.check_bankinplay_connection()
-        interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_document(access_data, self.id)
-        if data:
-            if data.get('documentos', False):
-                estado = data['documentos'][0]['estado']
-                if estado == 'correcto':
-                    self.bankinplay_sent = True
-                else:
-                    raise UserError(_('Error: %s' % data['documentos'][0]['description']))
-        return data
+#     def bankinplay_send_move(self):
+#         company_id = self.env.company
+#         access_data = company_id.check_bankinplay_connection()
+#         interface_model = self.env["bankinplay.interface"]
+#         data = interface_model._export_document(access_data, self.id)
+#         if data:
+#             if data.get('documentos', False):
+#                 estado = data['documentos'][0]['estado']
+#                 if estado == 'correcto':
+#                     self.bankinplay_sent = True
+#                 else:
+#                     raise UserError(_('Error: %s' % data['documentos'][0]['description']))
+#         return data
