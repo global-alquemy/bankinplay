@@ -77,6 +77,10 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _get_pending_async_request(self, access_data, data, params=[]):
         
+        _logger.info(
+            _("`POST` response data %s"), data
+        )
+
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'response',
             #'request_data': json.dumps(params),
@@ -225,7 +229,7 @@ class BankinPlayInterface(models.AbstractModel):
         headers = self._get_request_headers(access_data)
 
         _logger.info(
-            _("`POST` request to %s with headers %s and params %s"), url, headers, params
+            _("`POST` request to %s with headers %s and params %s and data %s"), url, headers, params, data
         )
 
         log_entry = self.env['bankinplay.log'].create({
