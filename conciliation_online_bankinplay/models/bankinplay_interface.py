@@ -166,9 +166,9 @@ class BankinPlayInterface(models.AbstractModel):
                 "domicilio": c.street if c.street else '',
                 "provincia": c.state_id.name if c.state_id else '',
                 "localidad": c.city if c.city else '',
-                "codigo_postal": c.zip if c.zip else '',
-                "administracion_email": c.email or '',
-                "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
+                #"codigo_postal": c.zip if c.zip else '',
+                #"administracion_email": c.email or '',
+                #"telefono": c.phone if c.phone else c.mobile if c.mobile else '',
                 "configuracion_contable": configuracion_contable
             }
             
