@@ -50,7 +50,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _export_account_plan(self, access_data, start_date):
         
         url = BANKINPLAY_ENDPOINT_V1 + "/planContableApi/plan_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         date = start_date.strftime("%d/%m/%Y")
         account = self.env['account.account'].search([], limit=1)
@@ -122,14 +122,13 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _export_contacts(self, access_data, domain=[]):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
         
         #domain.extend(['|', ('bankinplay_sent', '=', False), ('bankinplay_update', '=', True)])
 
         contact_ids = self.env['res.partner'].search(domain)
         contacts = []
         for c in contact_ids:
-            print(c.name)
             configuracion_contable = []
             if c.is_customer:
                 configuracion_contable.append({
@@ -194,7 +193,6 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _export_documents(self, access_data, start_date, journal_ids):    
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
         
         document_ids = self.env['account.move'].search([('invoice_date', '>', start_date), ('state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)])
         
@@ -212,7 +210,7 @@ class BankinPlayInterface(models.AbstractModel):
         self._export_contact(access_data, self.env['res.partner'].search([('id', '=', account_move_id.partner_id.id)]).id)
 
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
         
         document_ids = self.env['account.move'].search([('id', '=', move_id)], limit=1)
         documents = []
@@ -233,7 +231,7 @@ class BankinPlayInterface(models.AbstractModel):
 
             document = {
                 "id_documento_erp": str(d.id),
-                "sociedad_cif": company_id.vat.replace('ES', ''),
+                "sociedad_cif": d.company_id.vat.replace('ES', ''),
                 "tipo_documento_codigo": tipo_documento_codigo,
                 "fecha_emision": d.invoice_date.strftime("%d/%m/%Y"),
                 "fecha_vencimiento": d.invoice_date_due.strftime("%d/%m/%Y"),
@@ -302,7 +300,7 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         
         document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
@@ -344,7 +342,7 @@ class BankinPlayInterface(models.AbstractModel):
 
             document = {
                 "id_documento_erp": str(d.id),
-                "sociedad_cif": d.vat.replace('ES', ''),
+                "sociedad_cif": company_id.vat.replace('ES', ''),
                 "tipo_documento_codigo": tipo_documento_codigo,
                 "fecha_emision": d.move_id.invoice_date.strftime("%d/%m/%Y") if d.move_id.invoice_date else d.date.strftime("%d/%m/%Y"),
                 "fecha_vencimiento": d.date_maturity.strftime("%d/%m/%Y") if d.date_maturity else d.date.strftime("%d/%m/%Y"),
@@ -388,8 +386,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _create_analytic_plan(self, access_data):
         
         url = BANKINPLAY_ENDPOINT_V1 + "/planes-analiticos"
-        company_id = self.env.company
-
+        company_id = access_data.get('company_id', False)
         params = {
             "nombre": "PA_" + company_id.vat.replace('ES', '')
         }
@@ -404,7 +401,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _create_analytic_line(self, access_data, analytic_plan_id):
         
         url = BANKINPLAY_ENDPOINT_V1 + "/linea-analitica/planes/" + analytic_plan_id + "/lineas"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         params = {
             "nombre": "PL_" + company_id.vat.replace('ES', ''),
@@ -421,7 +418,6 @@ class BankinPlayInterface(models.AbstractModel):
     def _export_analytic_plan(self, access_data, analytic_line_id):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/codigo-analitico/lineas/" + analytic_line_id + "/codigo"
-        company_id = self.env.company
         
         account_analytic_ids = self.env['account.analytic.account'].search([])
         analytics = []
@@ -448,7 +444,7 @@ class BankinPlayInterface(models.AbstractModel):
     # CONCILIACIÓN
     def _import_conciliate_documents(self, access_data):    
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         params = {
             "sociedades": [company_id.bankinplay_company_id],
@@ -470,7 +466,7 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _import_account_moves(self, access_data):    
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
         params = {
             "fechaHasta" : (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
@@ -483,7 +479,7 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _export_account_move_lines(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True)]).filtered(lambda x: x.unique_import_id and x.date >= company_id.bankinplay_start_date and not x.bankinplay_sent)
         account_move_lines = []

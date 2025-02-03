@@ -129,9 +129,9 @@ class ResCompany(models.Model):
                                     importe_conciliado = abs(conciliation.get('importe_conciliado', 0))
 
                                     if move_line.debit:
-                                        debit = importe_conciliado
-                                    else:
                                         credit = importe_conciliado
+                                    else:
+                                        debit = importe_conciliado
                                     
                                     counterparts.append({
                                         'name': move_line.name,
