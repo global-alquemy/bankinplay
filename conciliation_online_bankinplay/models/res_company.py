@@ -117,18 +117,28 @@ class ResCompany(models.Model):
                         receivable_account_type = self.env.ref("account.data_account_type_receivable")
 
                         counterparts = []
-                        move_id = int(conciliation.get('id_documento_erp'))
-                        if move_id:
-                            move = self.env['account.move'].search([('id', '=', move_id), ('state', '=', 'posted')], limit=1)
-                            if move:
-                                for line in move.line_ids:
-                                    if line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
-                                        counterparts.append({
-                                            'name': line.name,
-                                            'credit': line.debit,
-                                            'debit': line.credit,
-                                            'move_line': line,
-                                        })
+                        move_line_id = int(conciliation.get('id_documento_erp'))
+                        if move_line_id:
+                            move_line = self.env['account.move.line'].search([('id', '=', move_line_id), ('parent_state', '=', 'posted')], limit=1)
+                            if move_line:
+                                
+                                if move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+                                    debit = 0
+                                    credit = 0
+
+                                    importe_conciliado = abs(conciliation.get('importe_conciliado', 0))
+
+                                    if move_line.debit:
+                                        debit = importe_conciliado
+                                    else:
+                                        credit = importe_conciliado
+                                    
+                                    counterparts.append({
+                                        'name': move_line.name,
+                                        'credit': credit,
+                                        'debit': debit,
+                                        'move_line': move_line,
+                                    })
                        
                                 moves = statement_line.process_reconciliation_oca(
                                     counterparts,
