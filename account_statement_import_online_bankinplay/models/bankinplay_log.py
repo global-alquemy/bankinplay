@@ -5,6 +5,7 @@ from datetime import datetime
 class BankinplayLog(models.Model):
     _name = 'bankinplay.log'
     _description = 'Log Bankinplay'
+    _order = 'date_time desc'
 
     operation_type = fields.Selection([
         ('request', 'Request'),
