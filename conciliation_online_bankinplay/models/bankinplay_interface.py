@@ -344,7 +344,7 @@ class BankinPlayInterface(models.AbstractModel):
 
             document = {
                 "id_documento_erp": str(d.id),
-                "sociedad_cif": company_id.vat.replace('ES', ''),
+                "sociedad_cif": d.vat.replace('ES', ''),
                 "tipo_documento_codigo": tipo_documento_codigo,
                 "fecha_emision": d.move_id.invoice_date.strftime("%d/%m/%Y") if d.move_id.invoice_date else d.date.strftime("%d/%m/%Y"),
                 "fecha_vencimiento": d.date_maturity.strftime("%d/%m/%Y") if d.date_maturity else d.date.strftime("%d/%m/%Y"),
@@ -495,7 +495,7 @@ class BankinPlayInterface(models.AbstractModel):
                 account_move_line = {
                     "movimiento_id": movimiento_id,
                     "cuenta_contable": account_code,
-                    "sociedad_cif": company_id.vat.replace('ES', ''),
+                    "sociedad_cif": st.company_id.vat.replace('ES', ''),
                     "fecha_contable": st.move_id.date.strftime("%d/%m/%Y"),
                     "importe": line.amount_currency,
                     "debe_haber": "D" if line.amount_currency > 0 else "H",
