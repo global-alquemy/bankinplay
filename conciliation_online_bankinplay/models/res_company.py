@@ -177,7 +177,7 @@ class ResCompany(models.Model):
 
                     for apunte in asiento.get('apuntes'):
                         if apunte.get('cuenta_contable') != journal_id.default_account_id.code:
-                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable'))], limit=1)
+                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable'), ('company_id', '=', self.id))], limit=1)
                             if not account_account:
                                raise UserError(_("Account %s not found in the system." % apunte.get('cuenta_contable')))
                             
@@ -192,7 +192,7 @@ class ResCompany(models.Model):
                             if apunte.get('analitica'):
                                 for analitica in apunte.get('analitica'):
                                     for desglose in analitica.get('desglose'):
-                                        account_analytic = self.env['account.analytic.account'].search([('name', '=', desglose.get('codigo_analitico'))], limit=1)
+                                        account_analytic = self.env['account.analytic.account'].search([('name', '=', desglose.get('codigo_analitico')), ('company_id', '=', self.id)], limit=1)
                                         if not account_analytic:
                                             raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
                                         )

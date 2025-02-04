@@ -53,9 +53,8 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
 
         date = start_date.strftime("%d/%m/%Y")
-        account = self.env['account.account'].search([], limit=1)
         
-        account_plan = self.env['account.account'].search([])
+        account_plan = self.env['account.account'].search([('company_id', '=', company_id.id)])
         code_size = len(account_plan[0].code)
         accounts = []
         for account in account_plan:
@@ -303,7 +302,7 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
 
         
-        document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
+        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id),('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
         
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -418,8 +417,8 @@ class BankinPlayInterface(models.AbstractModel):
     def _export_analytic_plan(self, access_data, analytic_line_id):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/codigo-analitico/lineas/" + analytic_line_id + "/codigo"
-        
-        account_analytic_ids = self.env['account.analytic.account'].search([])
+        company_id = access_data.get('company_id', False)
+        account_analytic_ids = self.env['account.analytic.account'].search([('company_id', '=', company_id.id)])
         analytics = []
         for a in account_analytic_ids:
             analytic = {
@@ -481,7 +480,7 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"
         company_id = access_data.get('company_id', False)
 
-        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True)]).filtered(lambda x: x.unique_import_id and x.date >= company_id.bankinplay_start_date and not x.bankinplay_sent)
+        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True), ('company_id', '=', company_id.id)]).filtered(lambda x: x.unique_import_id and x.date >= company_id.bankinplay_start_date and not x.bankinplay_sent)
         account_move_lines = []
         for st in statement_line_ids:
             movimiento_id = st.unique_import_id.split('-')[-1]
