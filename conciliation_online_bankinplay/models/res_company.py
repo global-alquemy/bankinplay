@@ -177,7 +177,7 @@ class ResCompany(models.Model):
 
                     for apunte in asiento.get('apuntes'):
                         if apunte.get('cuenta_contable') != journal_id.default_account_id.code:
-                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable'), ('company_id', '=', self.id))], limit=1)
+                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable')), ('company_id', '=', self.id)], limit=1)
                             if not account_account:
                                raise UserError(_("Account %s not found in the system." % apunte.get('cuenta_contable')))
                             
