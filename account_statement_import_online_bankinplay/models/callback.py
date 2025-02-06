@@ -40,19 +40,11 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        response = interface_model.sudo().manage_lectura_cierre_callback(
-            desencrypt_data, event_data
+        interface_model.sudo().with_delay().manage_lectura_cierre_callback(
+            desencrypt_data, event_data, request_id, log_entry
         )
 
-        if response:
-            request_id.write({
-                'status': 'success',
-                'related_log_id': log_entry.id,
-            })
-            log_entry.write({
-                'status': 'success',
-                'related_log_id': request_id.id,
-            })
+        
 
         return {"status": "success", "message": "Datos recibidos correctamente"}
 
@@ -80,19 +72,10 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        response = interface_model.sudo().manage_lectura_intradia_callback(
-            desencrypt_data, event_data
+        interface_model.sudo().manage_lectura_intradia_callback(
+            desencrypt_data, event_data, request_id, log_entry
         )
 
-        if response:
-            request_id.write({
-                'status': 'success',
-                'related_log_id': log_entry.id,
-            })
-            log_entry.write({
-                'status': 'success',
-                'related_log_id': request_id.id,
-            })
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
@@ -121,19 +104,11 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        response = interface_model.sudo().manage_lectura_tarjeta_callback(
-            desencrypt_data, event_data
+        interface_model.sudo().manage_lectura_tarjeta_callback(
+            desencrypt_data, event_data, request_id, log_entry
         )
 
-        if response:
-            request_id.write({
-                'status': 'success',
-                'related_log_id': log_entry.id,
-            })
-            log_entry.write({
-                'status': 'success',
-                'related_log_id': request_id.id,
-            })
+      
 
         # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
