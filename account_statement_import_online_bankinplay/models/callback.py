@@ -72,7 +72,7 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        interface_model.sudo().manage_lectura_intradia_callback(
+        interface_model.sudo().with_delay().manage_lectura_intradia_callback(
             desencrypt_data, event_data, request_id, log_entry
         )
 
@@ -104,7 +104,7 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        interface_model.sudo().manage_lectura_tarjeta_callback(
+        interface_model.sudo().with_delay().manage_lectura_tarjeta_callback(
             desencrypt_data, event_data, request_id, log_entry
         )
 

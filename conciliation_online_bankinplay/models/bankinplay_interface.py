@@ -471,7 +471,11 @@ class BankinPlayInterface(models.AbstractModel):
                 for doc in documentos:
                     id_movimiento = str(doc.get('id_movimiento'))
                     if id_movimiento:
-                        documentos_por_movimiento.setdefault(id_movimiento, []).append(doc)
+                        if id_movimiento not in documentos_por_movimiento:
+                            documentos_por_movimiento[id_movimiento] = []
+                        documentos_por_movimiento[id_movimiento].append(doc)
+                
+                _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
 
                 for id_movimiento, docs in documentos_por_movimiento.items():
 
