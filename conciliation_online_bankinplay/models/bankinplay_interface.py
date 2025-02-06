@@ -475,10 +475,10 @@ class BankinPlayInterface(models.AbstractModel):
                             documentos_por_movimiento[id_movimiento] = []
                         documentos_por_movimiento[id_movimiento].append(doc)
                 
-                _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
+                # _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
 
                 for id_movimiento, docs in documentos_por_movimiento.items():
-
+                    _logger.info(f"ID Movimiento: {id_movimiento} - Total documentos: {len(docs)}")
                     statement_line = self.env['account.bank.statement.line'].search([
                         ('is_reconciled', '=', False),
                         ('unique_import_id', 'like', id_movimiento)
@@ -522,12 +522,12 @@ class BankinPlayInterface(models.AbstractModel):
                                         'move_line': move_line,
                                     })
 
-                            if counterparts:
-                                statement_line.process_reconciliation_oca(
-                                    counterparts,
-                                    [],
-                                    []
-                                )
+                        if counterparts:
+                            statement_line.process_reconciliation_oca(
+                                counterparts,
+                                [],
+                                []
+                            )
 
 
         company_id.bankinplay_last_syncdate = datetime.today()
