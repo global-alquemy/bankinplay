@@ -10,6 +10,7 @@ class BankinplayLog(models.Model):
     operation_type = fields.Selection([
         ('request', 'Request'),
         ('response', 'Response'),
+        ('error', 'Error'),
     ], string='Operation Type', required=True)
 
     response_id = fields.Char(string='Response ID')
@@ -33,6 +34,7 @@ class BankinplayLog(models.Model):
 
     notes = fields.Char(string='Notes')
     triggered_event = fields.Char(string='Triggered Event')
+    company_id = fields.Many2one('res.company', string='Company')
 
     def set_status(self, status):
         self.ensure_one()

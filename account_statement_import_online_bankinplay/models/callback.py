@@ -24,6 +24,7 @@ class CallbackController(http.Controller):
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
+        
         # Obtener los datos del cuerpo de la solicitud
         event_data = json.loads(request_id.event_data)
 
@@ -53,7 +54,6 @@ class CallbackController(http.Controller):
                 'related_log_id': request_id.id,
             })
 
-        # Responder al cliente
         return {"status": "success", "message": "Datos recibidos correctamente"}
 
     @http.route('/webhook/lectura_intradia', auth='public', methods=['POST'], type='json')

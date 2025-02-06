@@ -39,7 +39,7 @@ class BankinPlayInterface(models.AbstractModel):
         return data
 
     def _login(self, username, password):
-        """BamkInPlay login returns an access dictionary for further requests."""
+        """BankInPlay login returns an access dictionary for further requests."""
         url = BANKINPLAY_ENDPOINT + "/clienteApi/jwt_token"
         if not (username and password):
             raise UserError(_("Please fill login and key."))

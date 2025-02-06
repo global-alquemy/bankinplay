@@ -98,31 +98,48 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         data = interface_model._import_conciliate_documents(access_data)
         if data.get('sociedades'):
-            for conciliation in data.get('sociedades')[0].get('documentos'):
-                statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
-                if statement_line:
-                    
-                    journal_id = statement_line.journal_id
-                    cuenta_bancaria = conciliation.get('cuenta_bancaria')
-                    number = (cuenta_bancaria + '-'
-                        + str(journal_id.id)
-                        + "-"
-                        + str(conciliation.get('id_movimiento'))
-                    )
+            sociedades = data.get('sociedades', [])
+    
+            if sociedades:
+                documentos = sociedades[0].get('documentos', [])
+           
+                payable_account_type = self.env.ref("account.data_account_type_payable")
+                receivable_account_type = self.env.ref("account.data_account_type_receivable")
+
+                documentos_por_movimiento = {}
+                for doc in documentos:
+                    id_movimiento = str(doc.get('id_movimiento'))
+                    if id_movimiento:
+                        documentos_por_movimiento.setdefault(id_movimiento, []).append(doc)
+
+                for id_movimiento, docs in documentos_por_movimiento.items():
+
+                    statement_line = self.env['account.bank.statement.line'].search([
+                        ('is_reconciled', '=', False),
+                        ('unique_import_id', 'like', id_movimiento)
+                    ], limit=1)
+
+                    if statement_line:
+                        cuenta_bancaria = docs[0].get('cuenta_bancaria', '')
+                        number = f"{cuenta_bancaria}-{statement_line.journal_id.id}-{id_movimiento}"
+         
                     if statement_line.unique_import_id == number:
                         if statement_line.is_reconciled:
                             statement_line.button_undo_reconciliation()           
 
-                        payable_account_type = self.env.ref("account.data_account_type_payable")
-                        receivable_account_type = self.env.ref("account.data_account_type_receivable")
-
                         counterparts = []
-                        move_line_id = int(conciliation.get('id_documento_erp'))
-                        if move_line_id:
-                            move_line = self.env['account.move.line'].search([('id', '=', move_line_id), ('parent_state', '=', 'posted')], limit=1)
-                            if move_line:
+
+                        for conciliation in docs:
+                            move_line_id = conciliation.get('id_documento_erp')
+          
+                            if move_line_id:
+                                move_line = self.env['account.move.line'].search([
+                                    ('id', '=', int(move_line_id)), 
+                                    ('parent_state', '=', 'posted')
+                                ], limit=1)
+
+                                if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
                                 
-                                if move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
                                     debit = 0
                                     credit = 0
 
@@ -139,16 +156,14 @@ class ResCompany(models.Model):
                                         'debit': debit,
                                         'move_line': move_line,
                                     })
-                       
-                                moves = statement_line.process_reconciliation_oca(
+
+                            if counterparts:
+                                statement_line.process_reconciliation_oca(
                                     counterparts,
                                     [],
                                     []
                                 )
-
-                                #move.bankinplay_send_move()
-
-                        
+ 
         return data
 
     def bankinplay_import_account_moves(self):
