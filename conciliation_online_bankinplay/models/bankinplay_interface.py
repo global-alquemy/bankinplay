@@ -488,46 +488,46 @@ class BankinPlayInterface(models.AbstractModel):
                         cuenta_bancaria = docs[0].get('cuenta_bancaria', '')
                         number = f"{cuenta_bancaria}-{statement_line.journal_id.id}-{id_movimiento}"
          
-                    if statement_line.unique_import_id == number:
-                        if statement_line.is_reconciled:
-                            statement_line.button_undo_reconciliation()           
+                        if statement_line.unique_import_id == number:
+                            if statement_line.is_reconciled:
+                                statement_line.button_undo_reconciliation()           
 
-                        counterparts = []
+                            counterparts = []
 
-                        for conciliation in docs:
-                            move_line_id = conciliation.get('id_documento_erp')
-          
-                            if move_line_id:
-                                move_line = self.env['account.move.line'].search([
-                                    ('id', '=', int(move_line_id)), 
-                                    ('parent_state', '=', 'posted')
-                                ], limit=1)
+                            for conciliation in docs:
+                                move_line_id = conciliation.get('id_documento_erp')
+            
+                                if move_line_id:
+                                    move_line = self.env['account.move.line'].search([
+                                        ('id', '=', int(move_line_id)), 
+                                        ('parent_state', '=', 'posted')
+                                    ], limit=1)
 
-                                if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
-                                
-                                    debit = 0
-                                    credit = 0
-
-                                    importe_conciliado = abs(conciliation.get('importe_conciliado', 0))
-
-                                    if move_line.debit:
-                                        credit = importe_conciliado
-                                    else:
-                                        debit = importe_conciliado
+                                    if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
                                     
-                                    counterparts.append({
-                                        'name': move_line.name,
-                                        'credit': credit,
-                                        'debit': debit,
-                                        'move_line': move_line,
-                                    })
+                                        debit = 0
+                                        credit = 0
 
-                        if counterparts:
-                            statement_line.process_reconciliation_oca(
-                                counterparts,
-                                [],
-                                []
-                            )
+                                        importe_conciliado = abs(conciliation.get('importe_conciliado', 0))
+
+                                        if move_line.debit:
+                                            credit = importe_conciliado
+                                        else:
+                                            debit = importe_conciliado
+                                        
+                                        counterparts.append({
+                                            'name': move_line.name,
+                                            'credit': credit,
+                                            'debit': debit,
+                                            'move_line': move_line,
+                                        })
+
+                            if counterparts:
+                                statement_line.process_reconciliation_oca(
+                                    counterparts,
+                                    [],
+                                    []
+                                )
 
 
         company_id.bankinplay_last_syncdate = datetime.today()
