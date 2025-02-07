@@ -144,48 +144,48 @@ class ResCompany(models.Model):
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).export_account_plan()
             eta += interval
 
     def bankinplay_export_analytic_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).export_analytic_plan()
             eta += interval
 
     def bankinplay_export_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_export_documents()
             eta += interval
 
     def bankinplay_import_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_import_documents()
             eta += interval
 
     def bankinplay_import_account_moves_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_import_account_moves()
             eta += interval
 
     def bankinplay_export_account_move_line_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 60
-        eta = interval
+        interval = 15
+        eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_export_account_move_line()
             eta += interval
