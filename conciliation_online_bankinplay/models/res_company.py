@@ -64,6 +64,8 @@ class ResCompany(models.Model):
         default='["&","&",["vat","!=",False],["parent_id","=",False],"|","|",["is_customer","=",True],["is_supplier","=",True],["employee","=",True]]'
     )
 
+
+    #FUNCIONES PARA EJECUTAR LOS PROCESOS DE BANKINPLAY
     def export_account_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
@@ -92,19 +94,15 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
 
-    
     def bankinplay_import_documents(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         interface_model._import_conciliate_documents(access_data)
         
-
     def bankinplay_import_account_moves(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         interface_model._import_account_moves(access_data)
-
-        
 
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()
@@ -119,13 +117,29 @@ class ResCompany(models.Model):
 
         interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
         
-    
     def bankinplay_export_account_move_line(self):  
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         interface_model._export_account_move_lines(access_data)
         
+    #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
+    def bankinplay_export_account_plan_button(self):
+        self.with_delay().export_account_plan()
 
+    def bankinplay_export_analytic_plan_button(self):
+        self.with_delay().export_analytic_plan()
+
+    def bankinplay_export_documents_button(self):
+        self.with_delay().bankinplay_export_documents()
+
+    def bankinplay_import_documents_button(self):
+        self.with_delay().bankinplay_import_documents()
+
+    def bankinplay_import_account_moves_button(self):
+        self.with_delay().bankinplay_import_account_moves()
+
+    def bankinplay_export_account_move_line_button(self):
+        self.with_delay().bankinplay_export_account_move_line()
 
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
