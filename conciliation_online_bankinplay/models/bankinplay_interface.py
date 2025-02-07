@@ -189,7 +189,6 @@ class BankinPlayInterface(models.AbstractModel):
         return data
     
     # DOCUMENTOS TERCEROS
-
     def _export_documents(self, access_data, start_date, journal_ids):    
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         
@@ -381,7 +380,6 @@ class BankinPlayInterface(models.AbstractModel):
     
     
     # PLAN ANALÍTICO
-    
     def _create_analytic_plan(self, access_data):
         
         url = BANKINPLAY_ENDPOINT_V1 + "/planes-analiticos"
