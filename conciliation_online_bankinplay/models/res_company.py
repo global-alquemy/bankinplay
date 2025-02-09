@@ -15,7 +15,7 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-
+with_delay_interval = 60
 class ResCompany(models.Model):
     _inherit = "res.company"
 
@@ -144,7 +144,7 @@ class ResCompany(models.Model):
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).export_account_plan()
@@ -152,7 +152,7 @@ class ResCompany(models.Model):
 
     def bankinplay_export_analytic_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).export_analytic_plan()
@@ -160,7 +160,7 @@ class ResCompany(models.Model):
 
     def bankinplay_export_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_export_documents()
@@ -168,7 +168,7 @@ class ResCompany(models.Model):
 
     def bankinplay_import_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_import_documents()
@@ -176,7 +176,7 @@ class ResCompany(models.Model):
 
     def bankinplay_import_account_moves_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_import_account_moves()
@@ -184,7 +184,7 @@ class ResCompany(models.Model):
 
     def bankinplay_export_account_move_line_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
-        interval = 15
+        interval = with_delay_interval
         eta = 0
         for company in company_ids:
             company.with_delay(eta=eta).bankinplay_export_account_move_line()

@@ -234,7 +234,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'request',
-            'request_data': json.dumps(params),
+            'request_data': json.dumps(data),
             #'response_data': json.dumps(data),
             'status': 'success',
             'notes': json.dumps(headers),
