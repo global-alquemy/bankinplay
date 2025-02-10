@@ -124,22 +124,22 @@ class ResCompany(models.Model):
         
     #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
     def bankinplay_export_account_plan_button(self):
-        self.with_delay().export_account_plan()
+        self.with_context(company_id=self.id).with_delay().export_account_plan()
 
     def bankinplay_export_analytic_plan_button(self):
-        self.with_delay().export_analytic_plan()
+        self.with_context(company_id=self.id).with_delay().export_analytic_plan()
 
     def bankinplay_export_documents_button(self):
-        self.with_delay().bankinplay_export_documents()
+        self.with_context(company_id=self.id).with_delay().bankinplay_export_documents()
 
     def bankinplay_import_documents_button(self):
-        self.with_delay().bankinplay_import_documents()
+        self.with_context(company_id=self.id).with_delay().bankinplay_import_documents()
 
     def bankinplay_import_account_moves_button(self):
-        self.with_delay().bankinplay_import_account_moves()
+        self.with_context(company_id=self.id).with_delay().bankinplay_import_account_moves()
 
     def bankinplay_export_account_move_line_button(self):
-        self.with_delay().bankinplay_export_account_move_line()
+        self.with_context(company_id=self.id).with_delay().bankinplay_export_account_move_line()
 
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
@@ -147,7 +147,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).export_account_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta).export_account_plan()
             eta += interval
 
     def bankinplay_export_analytic_plan_cron(self):
@@ -155,7 +155,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).export_analytic_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta).export_analytic_plan()
             eta += interval
 
     def bankinplay_export_documents_cron(self):
@@ -163,7 +163,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).bankinplay_export_documents()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_documents()
             eta += interval
 
     def bankinplay_import_documents_cron(self):
@@ -171,7 +171,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).bankinplay_import_documents()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_documents()
             eta += interval
 
     def bankinplay_import_account_moves_cron(self):
@@ -179,7 +179,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).bankinplay_import_account_moves()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_account_moves()
             eta += interval
 
     def bankinplay_export_account_move_line_cron(self):
@@ -187,7 +187,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_delay(eta=eta).bankinplay_export_account_move_line()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_account_move_line()
             eta += interval
         
     
