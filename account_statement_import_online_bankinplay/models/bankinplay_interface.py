@@ -446,7 +446,7 @@ class BankinPlayInterface(models.AbstractModel):
             'triggered_event': 'lectura_tarjeta'
         })
 
-    def manage_lectura_callback(self, transactions, event_data, request_id=False, log_entry=False):
+    def manage_lectura_callback(self, transactions, event_data):
         """Manage the callback for intraday transactions."""
         provider_id = self.env["online.bank.statement.provider"].browse(
             event_data.get("provider_id")
@@ -472,41 +472,26 @@ class BankinPlayInterface(models.AbstractModel):
             (new_transactions, {}), statement_date_since, statement_date_until
         )
 
+        return True
 
-        if request_id and log_entry:
-            request_id.write({
-                'status': 'success',
-                'related_log_id': log_entry.id,
-            })
-        
-            log_entry.write({
-                'status': 'success',
-                'related_log_id': request_id.id,
-            })
-
+    def manage_lectura_cierre_callback(self, data, event_data):
+        """Manage the callback for intraday transactions."""
+        transactions = self._get_transactions_from_data(data, event_data)
+        self.manage_lectura_callback(transactions, event_data)
 
         return True
 
-    def manage_lectura_cierre_callback(self, data, event_data, request_id, log_entry):
+    def manage_lectura_intradia_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
         transactions = self._get_transactions_from_data(data, event_data)
-        self.manage_lectura_callback(transactions, event_data, request_id, log_entry)
-
-        
+        self.manage_lectura_callback(transactions, event_data)
 
         return True
 
-    def manage_lectura_intradia_callback(self, data, event_data, request_id, log_entry):
+    def manage_lectura_tarjeta_callback(self, data, event_data):
         """Manage the callback for intraday transactions."""
         transactions = self._get_transactions_from_data(data, event_data)
-        self.manage_lectura_callback(transactions, event_data, request_id, log_entry)
-
-        return True
-
-    def manage_lectura_tarjeta_callback(self, data, event_data, request_id, log_entry):
-        """Manage the callback for intraday transactions."""
-        transactions = self._get_transactions_from_data(data, event_data)
-        self.manage_lectura_callback(transactions, event_data, request_id, log_entry)
+        self.manage_lectura_callback(transactions, event_data)
 
         return True
 

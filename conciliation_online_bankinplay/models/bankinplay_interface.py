@@ -294,8 +294,6 @@ class BankinPlayInterface(models.AbstractModel):
                 raise UserError("BANKINPLAY: \n" + document_data.get('errors')[0]['description'])
         
     
-
-
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = access_data.get('company_id', False)
@@ -378,7 +376,6 @@ class BankinPlayInterface(models.AbstractModel):
         return data
             
     
-    
     # PLAN ANALÍTICO
     def _create_analytic_plan(self, access_data):
         
@@ -435,7 +432,6 @@ class BankinPlayInterface(models.AbstractModel):
             data = self._post_request(access_data, url, {}, json.dumps(params))
             
         return data
-
 
     # CONCILIACIÓN
     def _import_conciliate_documents(self, access_data):    
@@ -526,10 +522,10 @@ class BankinPlayInterface(models.AbstractModel):
                                     [],
                                     []
                                 )
+                                self.env.cr.commit()
 
 
         company_id.bankinplay_last_syncdate = datetime.today()
-
 
     def _import_account_moves(self, access_data):    
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
@@ -601,6 +597,7 @@ class BankinPlayInterface(models.AbstractModel):
                     )
 
                     statement_line.write({'bankinplay_conciliation': True})
+                    self.env.cr.commit()
         
         return data
 
