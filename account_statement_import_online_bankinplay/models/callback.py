@@ -17,6 +17,7 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_cierre', auth='public', methods=['POST'], type='json')
     def callback_lectura_cierre(self, **kw):
+        _logger.info("Callback lectura cierre: %s", request.httprequest.data)
         data = json.loads(
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
@@ -28,7 +29,7 @@ class CallbackController(http.Controller):
         # Obtener los datos del cuerpo de la solicitud
         event_data = json.loads(request_id.event_data)
 
-        _logger.info("Callback lectura cierre: %s", desencrypt_data)
+       
 
         if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
             request_id.write({
