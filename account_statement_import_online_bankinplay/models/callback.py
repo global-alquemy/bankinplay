@@ -17,14 +17,11 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/lectura_cierre', auth='public', methods=['POST'], type='json')
     def callback_lectura_cierre(self, **kw):
-        _logger.info("Entra a callback lectura cierre")
-
-        _logger.info("Callback lectura cierre: %s", request.httprequest.data)
         data = json.loads(
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
         
@@ -45,7 +42,7 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        interface_model.sudo().with_delay().manage_lectura_cierre_callback(
+        interface_model.with_delay().manage_lectura_cierre_callback(
             desencrypt_data, event_data, request_id, log_entry
         )
 
