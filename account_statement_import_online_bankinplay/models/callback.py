@@ -28,6 +28,8 @@ class CallbackController(http.Controller):
         # Obtener los datos del cuerpo de la solicitud
         event_data = json.loads(request_id.event_data)
 
+        _logger.info("Callback lectura cierre: %s", desencrypt_data)
+
         if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
             request_id.write({
                 'status': 'error',
@@ -44,8 +46,7 @@ class CallbackController(http.Controller):
             desencrypt_data, event_data, request_id, log_entry
         )
 
-        
-
+    
         return {"status": "success", "message": "Datos recibidos correctamente"}
 
     @http.route('/webhook/lectura_intradia', auth='public', methods=['POST'], type='json')
