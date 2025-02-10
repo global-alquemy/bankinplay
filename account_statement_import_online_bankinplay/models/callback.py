@@ -42,7 +42,7 @@ class CallbackController(http.Controller):
 
             return {"status": "success", "message": "Datos recibidos correctamente"}
 
-        interface_model.manage_lectura_cierre_callback(
+        interface_model.with_delay().manage_lectura_cierre_callback(
             desencrypt_data, event_data, request_id, log_entry
         )
 
