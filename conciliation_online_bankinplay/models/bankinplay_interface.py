@@ -118,7 +118,6 @@ class BankinPlayInterface(models.AbstractModel):
 
     
     # CONTACTOS
-
     def _export_contacts(self, access_data, domain=[]):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
         company_id = access_data.get('company_id', False)
@@ -325,7 +324,8 @@ class BankinPlayInterface(models.AbstractModel):
             if d.payment_line_ids and d.payment_line_ids[:1].payment_ids and d.payment_line_ids[:1].payment_ids[:1].payment_order_id:
                 amount_residual = abs(d.amount_currency)
                 payment_order_id = d.payment_line_ids[:1].payment_ids[:1].payment_order_id
-
+                if payment_order_id.state != 'uploaded':
+                    payment_order_id = False
 
             document_type = 'PDTE'
             if payment_order_id:
@@ -371,7 +371,6 @@ class BankinPlayInterface(models.AbstractModel):
                     move_line.write({
                         "bankinplay_sent": True,
                     })
-
 
         return data
             
@@ -541,7 +540,7 @@ class BankinPlayInterface(models.AbstractModel):
         _logger.info("DATA: %s", data)
 
         for asiento in data.get('results').get('asientos'):
-            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(asiento.get('movimiento_id')) in x.unique_import_id)
+            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: x.unique_import_id and str(asiento.get('movimiento_id')) in (x.unique_import_id))
             if statement_line and not statement_line.is_reconciled:
                 journal_id = statement_line.journal_id
                 cuenta_bancaria = asiento.get('cuenta_bancaria')
