@@ -104,7 +104,7 @@ class BankinPlayInterface(models.AbstractModel):
             time.sleep(5)
             data = self._get_request(access_data, url, params)
             estado = data.get('estado', '')
-            if estado == 'erroneo':
+            if estado == 'erroneo' or estado == 'anulado':
                 raise UserError('Error en la solicitud de transacciones')
 
         url = (
