@@ -375,19 +375,21 @@ class BankinPlayInterface(models.AbstractModel):
             "documentos": documents,
         }
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        if len(documents) > 0:
 
-        for tercero in data.get('documentos', []):
-            if tercero.get('estado', 'Incorrecto') == 'correcto':
-                move_line = self.env['account.move.line'].search(
-                    [('id', '=', tercero.get('id_documento_erp'))], limit=1)
-                if move_line:
-                    move_line.write({
-                        "bankinplay_sent": True,
-                    })
+            data = self._get_pending_async_request(
+                access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
-        return data
+            for tercero in data.get('documentos', []):
+                if tercero.get('estado', 'Incorrecto') == 'correcto':
+                    move_line = self.env['account.move.line'].search(
+                        [('id', '=', tercero.get('id_documento_erp'))], limit=1)
+                    if move_line:
+                        move_line.write({
+                            "bankinplay_sent": True,
+                        })
+                
+
 
     # PLAN ANALÍTICO
 
