@@ -4,13 +4,13 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 {
     "name": "Online Conciliation: BankInPlay",
-    "version": "16.0.1.0.0",
+    "version": "16.0.13.0.0",
     "category": "Account",
     "author": "Alquemy",
     "website": "https://www.alquemy.es",
     "license": "AGPL-3",
     "installable": True,
-    "depends": ["account_statement_import_online_bankinplay", "partner_manual_rank"],
+    "depends": ["account_statement_import_online_bankinplay", "partner_manual_rank", "account_statement_base"],
     "data": [
         "data/cron.xml",
         "views/res_company.xml",

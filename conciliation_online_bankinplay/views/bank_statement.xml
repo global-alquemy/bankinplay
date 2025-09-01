@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
-    <record id="view_bank_statement_form_inherit" model="ir.ui.view">
-        <field name="name">bank.statement.form.inherit</field>
-        <field name="model">account.bank.statement</field>
-        <field name="inherit_id" ref="account.view_bank_statement_form"/>
+
+    <record id="view_bank_statement_form_line_inherit" model="ir.ui.view">
+        <field name="name">bank.statement.form.line.inherit</field>
+        <field name="model">account.bank.statement.line</field>
+        <field name="inherit_id" ref="account_statement_base.account_bank_statement_line_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='line_ids']//tree/field[@name='account_number']" position="after">
+            <xpath expr="//field[@name='state']" position="after">
                 <field name="bankinplay_conciliation" optional="hidden"/>
                 <field name="bankinplay_sent" optional="hidden"/>
             </xpath>
 
         </field>
     </record>
+
+
+
 
 
 </odoo>

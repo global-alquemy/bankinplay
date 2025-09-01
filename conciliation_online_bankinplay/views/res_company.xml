@@ -6,6 +6,7 @@
         <field name="inherit_id" ref="account_statement_import_online_bankinplay.bankinplay_view_company_form" />
         <field name="arch" type="xml">
             <button name="test_bankinplay_connection" position="after">
+                <br/>
                 <field name="bankinplay_enabled" readonly="0"></field>
                 <field name="bankinplay_start_date"/>
                 <field name="bankinplay_partner_domain" widget="domain" options="{'model': 'res.partner', 'in_dialog': True}"/>
