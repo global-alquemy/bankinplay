@@ -439,7 +439,7 @@ class BankinPlayInterface(models.AbstractModel):
         analytics = []
         for a in account_analytic_ids:
             analytic = {
-                "codigo": a.name,
+                "codigo": a.code,
             }
             analytics.append(analytic)
 
@@ -449,7 +449,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         for a in account_analytic_ids:
             params = {
-                "codigo": a.name,
+                "codigo": a.code,
             }
             data = self._post_request(access_data, url, {}, json.dumps(params))
             print(data)

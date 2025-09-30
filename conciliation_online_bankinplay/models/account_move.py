@@ -21,4 +21,5 @@ class AccountMove(models.Model):
     bankinplay_sent = fields.Boolean(
         string="BankInPlay Sent",
         help="BankInPlay Sent.",
+        copy=False
     )
