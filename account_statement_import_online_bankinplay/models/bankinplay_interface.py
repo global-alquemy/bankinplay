@@ -322,7 +322,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         params = {
             "exportados": True,
-            "deshabilitar_callback": True,
+            "deshabilitar_callback": False,
             "fechaDesdeOperacion": date_since.strftime("%d/%m/%Y"),
             "fechaHastaOperacion": date_until.strftime("%d/%m/%Y"),
             "cuentasBancarias": [access_data.get("bankinplay_account")] if access_data.get("bankinplay_account", False) else []
