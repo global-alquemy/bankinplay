@@ -15,7 +15,7 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-
+with_delay_interval = 60
 class ResCompany(models.Model):
     _inherit = "res.company"
 
@@ -64,6 +64,8 @@ class ResCompany(models.Model):
         default='["&","&",["vat","!=",False],["parent_id","=",False],"|","|",["is_customer","=",True],["is_supplier","=",True],["employee","=",True]]'
     )
 
+
+    #FUNCIONES PARA EJECUTAR LOS PROCESOS DE BANKINPLAY
     def export_account_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
@@ -90,121 +92,17 @@ class ResCompany(models.Model):
     def bankinplay_export_documents(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
-        return data
-    
+        interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
+
     def bankinplay_import_documents(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._import_conciliate_documents(access_data)
-        if data.get('sociedades'):
-            for conciliation in data.get('sociedades')[0].get('documentos'):
-                statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(conciliation.get('id_movimiento')) in x.unique_import_id)
-                if statement_line and not statement_line.is_reconciled:
-                    journal_id = statement_line.journal_id
-                    cuenta_bancaria = conciliation.get('cuenta_bancaria')
-                    number = (cuenta_bancaria + '-'
-                        + str(journal_id.id)
-                        + "-"
-                        + str(conciliation.get('id_movimiento'))
-                    )
-                    if statement_line.unique_import_id == number:
-                        
-                        statement_line.line_ids.remove_move_reconcile()
-                        statement_line.payment_ids.unlink() 
-
-                        line_vals = []
-
-                        payable_account_type = self.env.ref("account.data_account_type_payable")
-                        receivable_account_type = self.env.ref("account.data_account_type_receivable")
-
-                        counterparts = []
-                        move_id = int(conciliation.get('id_documento_erp'))
-                        if move_id:
-                            move = self.env['account.move'].search([('id', '=', move_id), ('state', '=', 'posted')], limit=1)
-                            if move:
-                                for line in move.line_ids:
-                                    if line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
-                                        counterparts.append({
-                                            'name': line.name,
-                                            'credit': line.debit,
-                                            'debit': line.credit,
-                                            'move_line': line,
-                                        })
-                       
-                                moves = statement_line.process_reconciliation(
-                                    counterparts,
-                                    [],
-                                    []
-                                )
-
-                                #move.bankinplay_send_move()
-
-                        
-        return data
-
+        interface_model._import_conciliate_documents(access_data)
+        
     def bankinplay_import_account_moves(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._import_account_moves(access_data)
-
-        for asiento in data.get('results').get('asientos'):
-            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: str(asiento.get('movimiento_id')) in x.unique_import_id)
-            if statement_line and not statement_line.is_reconciled:
-                journal_id = statement_line.journal_id
-                cuenta_bancaria = asiento.get('cuenta_bancaria')
-                number = (cuenta_bancaria + '-'
-                    + str(journal_id.id)
-                    + "-"
-                    + str(asiento.get('movimiento_id'))
-                )
-                if statement_line.unique_import_id == number:
-                    
-                    statement_line.line_ids.remove_move_reconcile()
-                    statement_line.payment_ids.unlink() 
-
-                    new_line_vals = []
-
-                    for apunte in asiento.get('apuntes'):
-                        if apunte.get('cuenta_contable') != journal_id.default_account_id.code:
-                            account_account = self.env['account.account'].search([('code', '=', apunte.get('cuenta_contable'))], limit=1)
-                            if not account_account:
-                               raise UserError(_("Account %s not found in the system." % apunte.get('cuenta_contable')))
-                            
-                            credit = 0
-                            debit = 0
-                            if apunte.get('debe_haber') == 'D':
-                                credit = apunte.get('importe')
-                            else:
-                                debit = apunte.get('importe')
-
-                            analytic_account_id = False
-                            if apunte.get('analitica'):
-                                for analitica in apunte.get('analitica'):
-                                    for desglose in analitica.get('desglose'):
-                                        account_analytic = self.env['account.analytic.account'].search([('name', '=', desglose.get('codigo_analitico'))], limit=1)
-                                        if not account_analytic:
-                                            raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
-                                        )
-                                        analytic_account_id = account_analytic.id
-                                        
-                            
-                            new_line_vals.append({
-                                'name': asiento.get('descripcion'),
-                                'credit': debit,
-                                'debit': credit,
-                                'account_id': account_account.id,
-                                'analytic_account_id': analytic_account_id
-                                
-                            })
-
-                    moves = statement_line.process_reconciliation(
-                            [],
-                            [],
-                            new_line_vals
-                    )
-
-                    statement_line.write({'bankinplay_conciliation': True})
+        interface_model._import_account_moves(access_data)
 
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()
@@ -217,55 +115,79 @@ class ResCompany(models.Model):
             analytic_line_id = interface_model._create_analytic_line(access_data, self.bankinplay_analytic_plan_id)
             self.bankinplay_analytic_line_id = analytic_line_id
 
-        data = interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
-        title = _("Export Succeded!")
-        message = _("Analytic plan has been exported successfully.")
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': title,
-                'message': message,
-                'sticky': False,
-            }
-        }
-    
+        interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
+        
     def bankinplay_export_account_move_line(self):  
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        data = interface_model._export_account_move_lines(access_data)
-        return data
+        interface_model._export_account_move_lines(access_data)
+        
+    #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
+    def bankinplay_export_account_plan_button(self):
+        self.with_context(company_id=self.id).with_delay().export_account_plan()
 
+    def bankinplay_export_analytic_plan_button(self):
+        self.with_context(company_id=self.id).with_delay().export_analytic_plan()
+
+    def bankinplay_export_documents_button(self):
+        self.with_context(company_id=self.id).with_delay().bankinplay_export_documents()
+
+    def bankinplay_import_documents_button(self):
+        self.with_context(company_id=self.id).with_delay().bankinplay_import_documents()
+
+    def bankinplay_import_account_moves_button(self):
+        self.with_context(company_id=self.id).with_delay().bankinplay_import_account_moves()
+
+    def bankinplay_export_account_move_line_button(self):
+        self.with_context(company_id=self.id).with_delay().bankinplay_export_account_move_line()
 
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.export_account_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta).export_account_plan()
+            eta += interval
 
     def bankinplay_export_analytic_plan_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.export_analytic_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta).export_analytic_plan()
+            eta += interval
 
     def bankinplay_export_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.bankinplay_export_documents()
-    
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_documents()
+            eta += interval
+
     def bankinplay_import_documents_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.bankinplay_import_documents()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_documents()
+            eta += interval
 
     def bankinplay_import_account_moves_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.bankinplay_import_account_moves()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_account_moves()
+            eta += interval
 
     def bankinplay_export_account_move_line_cron(self):
         company_ids = self.env['res.company'].search([('bankinplay_enabled', '=', True)])
+        interval = with_delay_interval
+        eta = 0
         for company in company_ids:
-            company.bankinplay_export_account_move_line()
+            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_account_move_line()
+            eta += interval
         
     

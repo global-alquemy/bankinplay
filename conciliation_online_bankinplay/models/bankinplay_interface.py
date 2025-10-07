@@ -50,12 +50,12 @@ class BankinPlayInterface(models.AbstractModel):
     def _export_account_plan(self, access_data, start_date):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/planContableApi/plan_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         date = start_date.strftime("%d/%m/%Y")
-        account = self.env['account.account'].search([], limit=1)
 
-        account_plan = self.env['account.account'].search([])
+        account_plan = self.env['account.account'].search(
+            [('company_id', '=', company_id.id)])
         code_size = len(account_plan[0].code)
         accounts = []
         for account in account_plan:
@@ -121,17 +121,15 @@ class BankinPlayInterface(models.AbstractModel):
             raise UserError('No se ha podido enlazar el plan contable')
 
     # CONTACTOS
-
     def _export_contacts(self, access_data, domain=[]):
         url = BANKINPLAY_ENDPOINT_V1 + "/tercero-cliente"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         # domain.extend(['|', ('bankinplay_sent', '=', False), ('bankinplay_update', '=', True)])
 
         contact_ids = self.env['res.partner'].search(domain)
         contacts = []
         for c in contact_ids:
-            print(c.name)
             configuracion_contable = []
             if c.is_customer:
                 configuracion_contable.append({
@@ -168,9 +166,9 @@ class BankinPlayInterface(models.AbstractModel):
                 "domicilio": c.street if c.street else '',
                 "provincia": c.state_id.name if c.state_id else '',
                 "localidad": c.city if c.city else '',
-                "codigo_postal": c.zip if c.zip else '',
-                "administracion_email": c.email or '',
-                "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
+                # "codigo_postal": c.zip if c.zip else '',
+                # "administracion_email": c.email or '',
+                # "telefono": c.phone if c.phone else c.mobile if c.mobile else '',
                 "configuracion_contable": configuracion_contable
             }
 
@@ -183,22 +181,19 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_pending_async_request(
             access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
-        for tercero in data.get('terceros', []):
-            if tercero.get('estado', 'Incorrecto') == 'correcto':
-                partner = self.env['res.partner'].search([]).filtered(
-                    lambda x: tercero.get('nif', False) in x.vat if x.vat else False)
-                if partner:
-                    partner.write({
-                        "bankinplay_sent": True
-                    })
+        # for tercero in data.get('terceros', []):
+        #     if tercero.get('estado', 'Incorrecto') == 'correcto':
+        #         partner = self.env['res.partner'].search([]).filtered(lambda x: tercero.get('nif', False) in x.vat if x.vat else False)
+        #         if partner:
+        #             partner.write({
+        #                 "bankinplay_sent": True
+        #             })
 
         return data
 
     # DOCUMENTOS TERCEROS
-
     def _export_documents(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
 
         document_ids = self.env['account.move'].search([('invoice_date', '>', start_date), (
             'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)])
@@ -219,7 +214,7 @@ class BankinPlayInterface(models.AbstractModel):
             [('id', '=', account_move_id.partner_id.id)]).id)
 
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         document_ids = self.env['account.move'].search(
             [('id', '=', move_id)], limit=1)
@@ -240,7 +235,7 @@ class BankinPlayInterface(models.AbstractModel):
 
             document = {
                 "id_documento_erp": str(d.id),
-                "sociedad_cif": company_id.vat.replace('ES', ''),
+                "sociedad_cif": d.company_id.vat.replace('ES', ''),
                 "tipo_documento_codigo": tipo_documento_codigo,
                 "fecha_emision": d.invoice_date.strftime("%d/%m/%Y"),
                 "fecha_vencimiento": d.invoice_date_due.strftime("%d/%m/%Y"),
@@ -315,15 +310,15 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
-        document_ids = self.env['account.move.line'].search([('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
+        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
             'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
-        # partner_ids = document_ids.mapped('partner_id')
-        # if partner_ids:
-        #     self._export_contacts(access_data, [('id', 'in', partner_ids.ids)])
+        partner_ids = document_ids.mapped('partner_id')
+        if partner_ids:
+            self._export_contacts(access_data, [('id', 'in', partner_ids.ids)])
 
         documents = []
         for d in document_ids:
@@ -341,8 +336,10 @@ class BankinPlayInterface(models.AbstractModel):
             payment_order_id = False
             if d.payment_line_ids and d.payment_line_ids[:1].payment_ids and d.payment_line_ids[:1].payment_ids[:1].payment_order_id:
                 amount_residual = abs(d.amount_currency)
-                payment_order_id = d.payment_line_ids[:
-                                                      1].payment_ids[:1].payment_order_id
+                payment_order_id = d.payment_line_ids[:1].payment_ids[:1].payment_order_id
+                if payment_order_id.state != 'uploaded':
+                    payment_order_id = False
+
 
             document_type = 'PDTE'
             if payment_order_id:
@@ -378,27 +375,28 @@ class BankinPlayInterface(models.AbstractModel):
             "documentos": documents,
         }
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        if len(documents) > 0:
 
-        for tercero in data.get('documentos', []):
-            if tercero.get('estado', 'Incorrecto') == 'correcto':
-                move_line = self.env['account.move.line'].search(
-                    [('id', '=', tercero.get('id_documento_erp'))], limit=1)
-                if move_line:
-                    move_line.write({
-                        "bankinplay_sent": True,
-                    })
+            data = self._get_pending_async_request(
+                access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
-        return data
+            for tercero in data.get('documentos', []):
+                if tercero.get('estado', 'Incorrecto') == 'correcto':
+                    move_line = self.env['account.move.line'].search(
+                        [('id', '=', tercero.get('id_documento_erp'))], limit=1)
+                    if move_line:
+                        move_line.write({
+                            "bankinplay_sent": True,
+                        })
+                
+
 
     # PLAN ANALÍTICO
 
     def _create_analytic_plan(self, access_data):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/planes-analiticos"
-        company_id = self.env.company
-
+        company_id = access_data.get('company_id', False)
         params = {
             "nombre": "PA_" + company_id.vat.replace('ES', '')
         }
@@ -406,7 +404,6 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._post_request(access_data, url, {}, json.dumps(params))
         analytic_plan_id = data.get('plan_analitico_id', '')
         if not analytic_plan_id:
-
             raise UserError('No se han podido dar de alta el plan analitico')
 
         return analytic_plan_id
@@ -415,7 +412,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/linea-analitica/planes/" + \
             analytic_plan_id + "/lineas"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         params = {
             "nombre": "PL_" + company_id.vat.replace('ES', ''),
@@ -433,9 +430,9 @@ class BankinPlayInterface(models.AbstractModel):
 
         url = BANKINPLAY_ENDPOINT_V1 + "/codigo-analitico/lineas/" + \
             analytic_line_id + "/codigo"
-        company_id = self.env.company
-
-        account_analytic_ids = self.env['account.analytic.account'].search([])
+        company_id = access_data.get('company_id', False)
+        account_analytic_ids = self.env['account.analytic.account'].search(
+            [('company_id', '=', company_id.id)])
         analytics = []
         for a in account_analytic_ids:
             analytic = {
@@ -452,14 +449,13 @@ class BankinPlayInterface(models.AbstractModel):
                 "codigo": a.code,
             }
             data = self._post_request(access_data, url, {}, json.dumps(params))
-            print(data)
 
         return data
 
     # CONCILIACIÓN
     def _import_conciliate_documents(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
         params = {
             "sociedades": [company_id.bankinplay_company_id],
@@ -469,7 +465,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         if company_id.bankinplay_last_syncdate:
             params['fecha_conciliacion_desde'] = (
-                company_id.bankinplay_last_syncdate - relativedelta(days=1)).strftime("%d/%m/%Y")
+                company_id.bankinplay_last_syncdate - relativedelta(days=2)).strftime("%d/%m/%Y")
         else:
             params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime(
                 "%d/%m/%Y")
@@ -477,13 +473,99 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_pending_async_request(
             access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
-        company_id.bankinplay_last_syncdate = datetime.today()
+        if data.get('sociedades'):
+            sociedades = data.get('sociedades', [])
 
-        return data
+            if sociedades:
+                documentos = sociedades[0].get('documentos', [])
+
+                payable_account_type = self.env.ref(
+                    "account.data_account_type_payable")
+                receivable_account_type = self.env.ref(
+                    "account.data_account_type_receivable")
+
+                documentos_por_movimiento = {}
+                for doc in documentos:
+                    id_movimiento = str(doc.get('id_movimiento'))
+                    if id_movimiento:
+                        if id_movimiento not in documentos_por_movimiento:
+                            documentos_por_movimiento[id_movimiento] = []
+                        documentos_por_movimiento[id_movimiento].append(doc)
+
+                # _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
+
+                for id_movimiento, docs in documentos_por_movimiento.items():
+                    _logger.info(
+                        f"ID Movimiento: {id_movimiento} - Total documentos: {len(docs)}")
+                    statement_line = self.env['account.bank.statement.line'].search([
+                        ('is_reconciled', '=', False),
+                        ('unique_import_id', 'like', id_movimiento)
+                    ], limit=1)
+
+                    if statement_line:
+                        cuenta_bancaria = docs[0].get('cuenta_bancaria', '')
+                        number = f"{cuenta_bancaria}-{statement_line.journal_id.id}-{id_movimiento}"
+
+                        if statement_line.unique_import_id == number:
+
+                            try:
+                                if statement_line.is_reconciled:
+                                    statement_line.button_undo_reconciliation()
+
+                                counterparts = []
+
+                                for conciliation in docs:
+                                    move_line_id = conciliation.get(
+                                        'id_documento_erp')
+
+                                    if move_line_id:
+                                        move_line = self.env['account.move.line'].search([
+                                            ('id', '=', int(move_line_id)),
+                                            ('parent_state', '=', 'posted')
+                                        ], limit=1)
+
+                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+
+                                            debit = 0
+                                            credit = 0
+
+                                            importe_conciliado = abs(
+                                                conciliation.get('importe_conciliado', 0))
+
+                                            if move_line.debit:
+                                                credit = importe_conciliado
+                                            else:
+                                                debit = importe_conciliado
+
+                                            counterparts.append({
+                                                'name': move_line.name,
+                                                'credit': credit,
+                                                'debit': debit,
+                                                'move_line': move_line,
+                                            })
+
+                                if counterparts:
+                                    statement_line.process_reconciliation_oca(
+                                        counterparts,
+                                        [],
+                                        []
+                                    )
+                                    self.env.cr.commit()
+
+                            except Exception as e:
+                                error = f"Error al conciliar documento: {e}"
+                                _logger.error(error)
+                                self.env['bankinplay.log'].create({
+                                    'operation_type': 'error',
+                                    'response_data': error,
+                                    'status': 'error',
+                                })
+
+        company_id.bankinplay_last_syncdate = datetime.today()
 
     def _import_account_moves(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
         params = {
             "fechaHasta": (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
@@ -493,13 +575,76 @@ class BankinPlayInterface(models.AbstractModel):
         data = self._get_pending_async_request(
             access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
+        _logger.info("DATA: %s", data)
+
+        for asiento in data.get('results').get('asientos'):
+            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: x.unique_import_id and str(asiento.get('movimiento_id')) in (x.unique_import_id))
+            if statement_line and not statement_line.is_reconciled:
+                journal_id = statement_line.journal_id
+                cuenta_bancaria = asiento.get('cuenta_bancaria')
+                number = (cuenta_bancaria + '-'
+                          + str(journal_id.id)
+                          + "-"
+                          + str(asiento.get('movimiento_id'))
+                          )
+                if statement_line.unique_import_id == number:
+
+                    statement_line.line_ids.remove_move_reconcile()
+                    statement_line.payment_ids.unlink()
+
+                    new_line_vals = []
+
+                    for apunte in asiento.get('apuntes'):
+                        if apunte.get('cuenta_contable') != journal_id.default_account_id.code:
+                            account_account = self.env['account.account'].search([('code', '=', apunte.get(
+                                'cuenta_contable')), ('company_id', '=', company_id.id)], limit=1)
+                            if not account_account:
+                                raise UserError(
+                                    _("Account %s not found in the system." % apunte.get('cuenta_contable')))
+
+                            credit = 0
+                            debit = 0
+                            if apunte.get('debe_haber') == 'D':
+                                credit = apunte.get('importe')
+                            else:
+                                debit = apunte.get('importe')
+
+                            analytic_account_id = False
+                            if apunte.get('analitica'):
+                                for analitica in apunte.get('analitica'):
+                                    for desglose in analitica.get('desglose'):
+                                        account_analytic = self.env['account.analytic.account'].search(
+                                            [('name', '=', desglose.get('codigo_analitico')), ('company_id', '=', company_id.id)], limit=1)
+                                        if not account_analytic:
+                                            raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
+                                                            )
+                                        analytic_account_id = account_analytic.id
+
+                            new_line_vals.append({
+                                'name': asiento.get('descripcion'),
+                                'credit': debit,
+                                'debit': credit,
+                                'account_id': account_account.id,
+                                'analytic_account_id': analytic_account_id
+
+                            })
+
+                    moves = statement_line.process_reconciliation_oca(
+                        [],
+                        [],
+                        new_line_vals
+                    )
+
+                    statement_line.write({'bankinplay_conciliation': True})
+                    self.env.cr.commit()
+
         return data
 
     def _export_account_move_lines(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"
-        company_id = self.env.company
+        company_id = access_data.get('company_id', False)
 
-        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True)]).filtered(
+        statement_line_ids = self.env['account.bank.statement.line'].search([('is_reconciled', '=', True), ('company_id', '=', company_id.id)]).filtered(
             lambda x: x.unique_import_id and x.date >= company_id.bankinplay_start_date and not x.bankinplay_sent)
         account_move_lines = []
         for st in statement_line_ids:
@@ -510,7 +655,7 @@ class BankinPlayInterface(models.AbstractModel):
                 account_move_line = {
                     "movimiento_id": movimiento_id,
                     "cuenta_contable": account_code,
-                    "sociedad_cif": company_id.vat.replace('ES', ''),
+                    "sociedad_cif": st.company_id.vat.replace('ES', ''),
                     "fecha_contable": st.move_id.date.strftime("%d/%m/%Y"),
                     "importe": line.amount_currency,
                     "debe_haber": "D" if line.amount_currency > 0 else "H",

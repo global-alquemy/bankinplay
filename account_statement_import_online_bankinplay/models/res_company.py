@@ -43,6 +43,9 @@ class ResCompany(models.Model):
         if not access_data:
             raise UserError(_("Connection Test Failed!"))
 
+        access_data.update({
+            'company_id': self,
+        })
         return access_data
 
     def test_bankinplay_connection(self):
