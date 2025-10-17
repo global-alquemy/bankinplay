@@ -416,7 +416,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         params = {
             "nombre": "PL_" + company_id.vat.replace('ES', ''),
-            "codigoContabilidad": "Linea analitica - " + company_id.name
+            "codigoContabilidad": "LA - " + company_id.name[:40]
         }
 
         data = self._post_request(access_data, url, {}, json.dumps(params))
@@ -440,13 +440,13 @@ class BankinPlayInterface(models.AbstractModel):
             }
             analytics.append(analytic)
 
-        params = {
-            "codigos": analytics
-        }
+            params = {
+                "codigos": analytics
+            }
 
         for a in account_analytic_ids:
             params = {
-                "codigo": a.code,
+                "codigo": a.name[:50] if a.name else "",
             }
             data = self._post_request(access_data, url, {}, json.dumps(params))
 
