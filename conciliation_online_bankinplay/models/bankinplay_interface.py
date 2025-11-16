@@ -10,7 +10,7 @@ import time
 import requests
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, fields, models
+from odoo import _, fields, models, Command
 from odoo.exceptions import UserError
 
 from odoo.addons.base.models.res_bank import sanitize_account_number
@@ -509,14 +509,11 @@ class BankinPlayInterface(models.AbstractModel):
                         if statement_line.unique_import_id == number:
 
                             try:
-                                if statement_line.is_reconciled:
-                                    statement_line.button_undo_reconciliation()
-
-                                counterparts = []
+                                # Recopilar las líneas de contrapartida a reconciliar
+                                move_lines_to_reconcile = self.env['account.move.line']
 
                                 for conciliation in docs:
-                                    move_line_id = conciliation.get(
-                                        'id_documento_erp')
+                                    move_line_id = conciliation.get('id_documento_erp')
 
                                     if move_line_id:
                                         move_line = self.env['account.move.line'].search([
@@ -525,32 +522,17 @@ class BankinPlayInterface(models.AbstractModel):
                                         ], limit=1)
 
                                         if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+                                            move_lines_to_reconcile |= move_line
 
-                                            debit = 0
-                                            credit = 0
-
-                                            importe_conciliado = abs(
-                                                conciliation.get('importe_conciliado', 0))
-
-                                            if move_line.debit:
-                                                credit = importe_conciliado
-                                            else:
-                                                debit = importe_conciliado
-
-                                            counterparts.append({
-                                                'name': move_line.name,
-                                                'credit': credit,
-                                                'debit': debit,
-                                                'move_line': move_line,
-                                            })
-
-                                if counterparts:
-                                    statement_line.process_reconciliation_oca(
-                                        counterparts,
-                                        [],
-                                        []
-                                    )
-                                    self.env.cr.commit()
+                                if move_lines_to_reconcile:
+                                    # Obtener la línea de suspense del extracto bancario
+                                    liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
+                                    
+                                    if suspense_lines:
+                                        # Reconciliar la línea de suspense con las contrapartidas
+                                        lines_to_reconcile = suspense_lines | move_lines_to_reconcile
+                                        lines_to_reconcile.reconcile()
+                                        self.env.cr.commit()
 
                             except Exception as e:
                                 error = f"Error al conciliar documento: {e}"
@@ -588,10 +570,7 @@ class BankinPlayInterface(models.AbstractModel):
                           + str(asiento.get('movimiento_id'))
                           )
                 if statement_line.unique_import_id == number:
-
-                    statement_line.line_ids.remove_move_reconcile()
-                    statement_line.payment_ids.unlink()
-
+                    # Crear líneas de asiento para la reconciliación
                     new_line_vals = []
 
                     for apunte in asiento.get('apuntes'):
@@ -605,9 +584,9 @@ class BankinPlayInterface(models.AbstractModel):
                             credit = 0
                             debit = 0
                             if apunte.get('debe_haber') == 'D':
-                                credit = apunte.get('importe')
-                            else:
                                 debit = apunte.get('importe')
+                            else:
+                                credit = apunte.get('importe')
 
                             analytic_account_id = False
                             if apunte.get('analitica'):
@@ -620,20 +599,32 @@ class BankinPlayInterface(models.AbstractModel):
                                                             )
                                         analytic_account_id = account_analytic.id
 
-                            new_line_vals.append({
+                            new_line_vals.append(Command.create({
                                 'name': asiento.get('descripcion'),
-                                'credit': debit,
-                                'debit': credit,
+                                'debit': debit,
+                                'credit': credit,
                                 'account_id': account_account.id,
-                                'analytic_account_id': analytic_account_id
+                                'analytic_account_id': analytic_account_id,
+                                'partner_id': statement_line.partner_id.id if statement_line.partner_id else False,
+                            }))
 
-                            })
-
-                    moves = statement_line.process_reconciliation_oca(
-                        [],
-                        [],
-                        new_line_vals
-                    )
+                    # Actualizar las líneas del movimiento del extracto bancario
+                    if new_line_vals:
+                        # Obtener la línea de suspense y eliminarla
+                        liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
+                        
+                        # Eliminar línea de suspense si existe
+                        line_ids_commands = []
+                        if suspense_lines:
+                            line_ids_commands.append(Command.delete(suspense_lines.id))
+                        
+                        # Agregar las nuevas líneas
+                        line_ids_commands.extend(new_line_vals)
+                        
+                        # Actualizar el movimiento
+                        statement_line.move_id.write({
+                            'line_ids': line_ids_commands
+                        })
 
                     statement_line.write({'bankinplay_conciliation': True})
                     self.env.cr.commit()
