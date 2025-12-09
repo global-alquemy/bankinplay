@@ -12,8 +12,12 @@
     "installable": True,
     "depends": ["account_statement_import_online_bankinplay", "partner_manual_rank"],
     "data": [
+        "security/ir.model.access.csv",
         "data/cron.xml",
         "views/res_company.xml",
         "views/bank_statement.xml",
+        "views/account_move_line.xml",
+        "views/bankinplay_cancel_queue.xml",
+        "views/bankinplay_menu.xml",
     ],
 }

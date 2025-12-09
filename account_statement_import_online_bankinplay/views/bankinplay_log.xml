@@ -57,6 +57,6 @@
         </field>
     </record>
 
-    <!-- Menú -->
-    <menuitem id="menu_bankinplay_log" name="Logs" parent="account.account_banks_menu" action="action_bankinplay_log" sequence="101"/>
+    <!-- Menú movido a conciliation_online_bankinplay/views/bankinplay_menu.xml -->
+    <!-- <menuitem id="menu_bankinplay_log" name="Logs" parent="account.account_banks_menu" action="action_bankinplay_log" sequence="101"/> -->
 </odoo>

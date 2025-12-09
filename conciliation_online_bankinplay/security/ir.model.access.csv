@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bankinplay_cancel_queue_user,bankinplay.cancel.queue.user,model_bankinplay_cancel_queue,account.group_account_user,1,1,1,1
+access_bankinplay_cancel_queue_manager,bankinplay.cancel.queue.manager,model_bankinplay_cancel_queue,account.group_account_manager,1,1,1,1

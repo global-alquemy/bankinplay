@@ -308,12 +308,55 @@ class BankinPlayInterface(models.AbstractModel):
                 raise UserError("BANKINPLAY: \n" +
                                 document_data.get('errors')[0]['description'])
 
+    def _cancel_document_line(self, access_data, move_line_id):
+        """Anular un documento en BankinPlay usando el id del apunte contable."""
+        company_id = access_data.get('company_id', False)
+
+        url_get_document = BANKINPLAY_ENDPOINT_V1 + "/sociedades/" + \
+            company_id.vat.replace('ES', '') + "/documentos-terceros/" + str(move_line_id)
+
+        params = {}
+
+        try:
+            document_data = self._get_request(access_data, url_get_document, params)
+
+            if isinstance(document_data, int):
+                url = BANKINPLAY_ENDPOINT_V1 + \
+                    "/documentos-terceros/anular/" + str(document_data)
+
+                data = self._delete_request(access_data, url, {}, json.dumps(params))
+
+                _logger.info("Documento %s anulado en BankinPlay", move_line_id)
+                return data
+
+            elif document_data.get('errors', False):
+                # Si el documento no existe en BankinPlay, no es un error crítico
+                _logger.warning(
+                    "Documento %s no encontrado en BankinPlay: %s",
+                    move_line_id,
+                    document_data.get('errors')[0].get('description', '')
+                )
+                return False
+
+        except Exception as e:
+            _logger.warning("Error al anular documento %s en BankinPlay: %s", move_line_id, e)
+            return False
+
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = access_data.get('company_id', False)
 
-        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
-            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
+        # Buscar apuntes no enviados O que requieren actualización
+        document_ids = self.env['account.move.line'].search([
+            ('company_id', '=', company_id.id),
+            ('date', '>=', start_date),
+            ('partner_id', '!=', False),
+            ('parent_state', '=', 'posted'),
+            ('journal_id', 'in', journal_ids),
+            '|',
+            ('bankinplay_sent', '=', False),
+            ('bankinplay_needs_update', '=', True)
+        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -385,9 +428,14 @@ class BankinPlayInterface(models.AbstractModel):
                     move_line = self.env['account.move.line'].search(
                         [('id', '=', tercero.get('id_documento_erp'))], limit=1)
                     if move_line:
-                        move_line.write({
-                            "bankinplay_sent": True,
-                        })
+                        # Usar SQL directo para evitar disparar el write() y crear bucle
+                        self.env.cr.execute("""
+                            UPDATE account_move_line
+                            SET bankinplay_sent = TRUE,
+                                bankinplay_needs_update = FALSE
+                            WHERE id = %s
+                        """, (move_line.id,))
+                        move_line.invalidate_cache(['bankinplay_sent', 'bankinplay_needs_update'])
                 
 
 
