@@ -313,7 +313,7 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
 
         document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
-            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'])
+            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.account_type in ['asset_receivable', 'liability_payable'])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -479,10 +479,8 @@ class BankinPlayInterface(models.AbstractModel):
             if sociedades:
                 documentos = sociedades[0].get('documentos', [])
 
-                payable_account_type = self.env.ref(
-                    "account.data_account_type_payable")
-                receivable_account_type = self.env.ref(
-                    "account.data_account_type_receivable")
+                payable_account_type = 'liability_payable'
+                receivable_account_type = 'asset_receivable'
 
                 documentos_por_movimiento = {}
                 for doc in documentos:
@@ -521,7 +519,7 @@ class BankinPlayInterface(models.AbstractModel):
                                             ('parent_state', '=', 'posted')
                                         ], limit=1)
 
-                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+                                        if move_line and move_line.account_id.account_type in [payable_account_type, receivable_account_type]:
                                             move_lines_to_reconcile |= move_line
 
                                 if move_lines_to_reconcile:
