@@ -7,7 +7,7 @@
         <field name="model">account.move.line</field>
         <field name="inherit_id" ref="account.view_move_line_tree"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='balance']" position="after">
+            <xpath expr="//field[@name='parent_state']" position="after">
                 <field name="bankinplay_sent" optional="hide"/>
                 <field name="bankinplay_needs_update" optional="hide"/>
             </xpath>
