@@ -608,19 +608,16 @@ class BankinPlayInterface(models.AbstractModel):
 
                     # Actualizar las líneas del movimiento del extracto bancario
                     if new_line_vals:
-                        # Obtener la línea de suspense y eliminarla
+                        # Obtener las líneas actuales
                         liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
-                        
-                        # Eliminar línea de suspense si existe
+
+                        # Eliminar solo la línea de suspense y agregar las nuevas contrapartidas
                         line_ids_commands = []
-                        if suspense_lines:
-                            line_ids_commands.append(Command.delete(suspense_lines.id))
-                        
-                        # Agregar las nuevas líneas
+                        for line in suspense_lines:
+                            line_ids_commands.append(Command.delete(line.id))
                         line_ids_commands.extend(new_line_vals)
-                        
-                        # Actualizar el movimiento
-                        statement_line.move_id.write({
+
+                        statement_line.with_context(force_delete=True).write({
                             'line_ids': line_ids_commands
                         })
 

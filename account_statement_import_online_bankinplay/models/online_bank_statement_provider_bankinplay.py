@@ -46,6 +46,15 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         string='Número de tarjeta',
     )
 
+    @api.onchange('service')
+    def _onchange_service_bankinplay(self):
+        """Auto-fill credentials from company when bankinplay is selected."""
+        if self.service == 'bankinplay' and self.company_id:
+            if not self.username and self.company_id.bankinplay_apikey:
+                self.username = self.company_id.bankinplay_apikey
+            if not self.password and self.company_id.bankinplay_apisecret:
+                self.password = self.company_id.bankinplay_apisecret
+
     @api.model
     def _get_available_services(self):
         """Each provider model must register its service."""
