@@ -586,7 +586,7 @@ class BankinPlayInterface(models.AbstractModel):
                             else:
                                 credit = apunte.get('importe')
 
-                            analytic_account_id = False
+                            analytic_distribution = {}
                             if apunte.get('analitica'):
                                 for analitica in apunte.get('analitica'):
                                     for desglose in analitica.get('desglose'):
@@ -595,14 +595,14 @@ class BankinPlayInterface(models.AbstractModel):
                                         if not account_analytic:
                                             raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
                                                             )
-                                        analytic_account_id = account_analytic.id
+                                        analytic_distribution[str(account_analytic.id)] = desglose.get('porcentaje', 100.0)
 
                             new_line_vals.append(Command.create({
                                 'name': asiento.get('descripcion'),
                                 'debit': debit,
                                 'credit': credit,
                                 'account_id': account_account.id,
-                                'analytic_account_id': analytic_account_id,
+                                'analytic_distribution': analytic_distribution or False,
                                 'partner_id': statement_line.partner_id.id if statement_line.partner_id else False,
                             }))
 
