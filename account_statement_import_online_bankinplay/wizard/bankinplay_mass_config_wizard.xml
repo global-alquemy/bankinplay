@@ -56,8 +56,8 @@
     </record>
 
     <menuitem id="menu_bankinplay_mass_config"
-              name="Mass Configure Bankinplay"
+              name="Configuración masiva Bankinplay"
               action="action_bankinplay_mass_config_wizard"
-              parent="account.menu_finance_configuration"
-              sequence="100"/>
+              parent="account.account_banks_menu"
+              sequence="102"/>
 </odoo>

@@ -77,11 +77,11 @@ class BankinplayMassConfigWizard(models.TransientModel):
 
     @api.model
     def _tz_get(self):
-        return [(tz, tz) for tz in sorted(
-            set(fields.Datetime().python_type.now().astimezone().tzinfo._tzinfos.keys())
-            if hasattr(fields.Datetime().python_type.now().astimezone().tzinfo, '_tzinfos')
-            else []
-        )] or [('Europe/Madrid', 'Europe/Madrid'), ('UTC', 'UTC')]
+        try:
+            import pytz
+            return [(tz, tz) for tz in sorted(pytz.common_timezones)]
+        except ImportError:
+            return [('Europe/Madrid', 'Europe/Madrid'), ('UTC', 'UTC')]
 
     @api.onchange('company_id')
     def _onchange_company_id(self):
