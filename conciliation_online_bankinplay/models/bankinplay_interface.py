@@ -347,7 +347,6 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
 
         # Buscar apuntes no enviados O que requieren actualización
-        # Solo enviar facturas con sub_state validated, validation_innecessary o sin sub_state
         document_ids = self.env['account.move.line'].search([
             ('company_id', '=', company_id.id),
             ('date', '>=', start_date),
@@ -357,7 +356,7 @@ class BankinPlayInterface(models.AbstractModel):
             '|',
             ('bankinplay_sent', '=', False),
             ('bankinplay_needs_update', '=', True)
-        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'] and (not x.move_id or x.move_id.sub_state in ['validated', 'validation_innecessary', False]))
+        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'] and (not x.move_id or x.move_id.sub_state in ['validated', 'validation_innecessary']))
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -573,8 +572,8 @@ class BankinPlayInterface(models.AbstractModel):
                                             ('parent_state', '=', 'posted')
                                         ], limit=1)
 
-                                        # Validar sub_state: solo conciliar si es validated, validation_innecessary o sin sub_state
-                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type] and (not move_line.move_id or move_line.move_id.sub_state in ['validated', 'validation_innecessary', False]):
+                                        # Validar sub_state: solo conciliar si es validated o validation_innecessary
+                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type] and (not move_line.move_id or move_line.move_id.sub_state in ['validated', 'validation_innecessary']):
 
                                             debit = 0
                                             credit = 0
