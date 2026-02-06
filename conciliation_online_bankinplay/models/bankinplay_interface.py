@@ -446,7 +446,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         for a in account_analytic_ids:
             params = {
-                "codigo": a.name[:50] if a.name else "",
+                "codigo": a.code or "",
             }
             data = self._post_request(access_data, url, {}, json.dumps(params))
 
@@ -590,10 +590,14 @@ class BankinPlayInterface(models.AbstractModel):
                             if apunte.get('analitica'):
                                 for analitica in apunte.get('analitica'):
                                     for desglose in analitica.get('desglose'):
+                                        codigo_analitico = desglose.get('codigo_analitico')
                                         account_analytic = self.env['account.analytic.account'].search(
-                                            [('name', '=', desglose.get('codigo_analitico')), ('company_id', '=', company_id.id)], limit=1)
+                                            [('code', '=', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
                                         if not account_analytic:
-                                            raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
+                                            account_analytic = self.env['account.analytic.account'].search(
+                                                [('name', 'ilike', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
+                                        if not account_analytic:
+                                            raise UserError(_("Analytic Account %s not found in the system." % codigo_analitico)
                                                             )
                                         analytic_distribution[str(account_analytic.id)] = desglose.get('porcentaje', 100.0)
 
