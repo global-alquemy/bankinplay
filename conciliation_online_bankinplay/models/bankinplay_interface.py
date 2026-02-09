@@ -507,29 +507,68 @@ class BankinPlayInterface(models.AbstractModel):
                         if statement_line.unique_import_id == number:
 
                             try:
-                                # Recopilar las líneas de contrapartida a reconciliar
-                                move_lines_to_reconcile = self.env['account.move.line']
+                                # Recopilar las líneas de contrapartida con su importe conciliado
+                                docs_to_reconcile = []
 
                                 for conciliation in docs:
                                     move_line_id = conciliation.get('id_documento_erp')
+                                    importe_conciliado = conciliation.get('importe_conciliado', 0)
 
-                                    if move_line_id:
+                                    if move_line_id and importe_conciliado:
                                         move_line = self.env['account.move.line'].search([
                                             ('id', '=', int(move_line_id)),
                                             ('parent_state', '=', 'posted')
                                         ], limit=1)
 
                                         if move_line and move_line.account_id.account_type in [payable_account_type, receivable_account_type]:
-                                            move_lines_to_reconcile |= move_line
+                                            docs_to_reconcile.append({
+                                                'move_line': move_line,
+                                                'amount': importe_conciliado,
+                                            })
 
-                                if move_lines_to_reconcile:
+                                if docs_to_reconcile:
                                     # Obtener la línea de suspense del extracto bancario
-                                    liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
-                                    
+                                    _liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
+
                                     if suspense_lines:
-                                        # Reconciliar la línea de suspense con las contrapartidas
-                                        lines_to_reconcile = suspense_lines | move_lines_to_reconcile
-                                        lines_to_reconcile.reconcile()
+                                        # Eliminar suspense lines y crear nuevas líneas con la cuenta
+                                        # correcta (la del documento) para poder reconciliar
+                                        move = statement_line.move_id
+                                        container = {"records": move, "self": move}
+                                        lines_to_remove = [(2, line.id) for line in suspense_lines + other_lines]
+                                        # Cobro (amount > 0): contrapartida es credit
+                                        # Pago (amount < 0): contrapartida es debit
+                                        is_credit = statement_line.amount > 0
+                                        to_reconcile = []
+
+                                        with move._check_balanced(container):
+                                            move.with_context(
+                                                skip_account_move_synchronization=True,
+                                                force_delete=True,
+                                                skip_invoice_sync=True,
+                                            ).write({"line_ids": lines_to_remove})
+
+                                            for doc in docs_to_reconcile:
+                                                move_line = doc['move_line']
+                                                amount = doc['amount']
+                                                # Crear línea contrapartida con la cuenta del documento
+                                                # y el importe conciliado (no el total de la factura)
+                                                new_line = self.env['account.move.line'].with_context(
+                                                    check_move_validity=False,
+                                                    skip_sync_invoice=True,
+                                                    skip_invoice_sync=True,
+                                                ).create({
+                                                    'move_id': move.id,
+                                                    'account_id': move_line.account_id.id,
+                                                    'partner_id': move_line.partner_id.id,
+                                                    'name': statement_line.payment_ref or move_line.name,
+                                                    'debit': 0.0 if is_credit else amount,
+                                                    'credit': amount if is_credit else 0.0,
+                                                })
+                                                to_reconcile.append(move_line + new_line)
+
+                                        for reconcile_items in to_reconcile:
+                                            reconcile_items.reconcile()
                                         self.env.cr.commit()
 
                             except Exception as e:
