@@ -196,7 +196,8 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
 
         document_ids = self.env['account.move'].search([('invoice_date', '>', start_date), (
-            'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)])
+            'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids),
+            ('amount_residual', '!=', 0)])
 
         for document in document_ids:
             name_job = "[BANKINPLAY] - FACTURA " + document.name
@@ -313,7 +314,7 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
 
         document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
-            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)]).filtered(lambda x: x.partner_id.vat and x.account_id.account_type in ['asset_receivable', 'liability_payable'])
+            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids), ('amount_residual', '!=', 0)]).filtered(lambda x: x.partner_id.vat and x.account_id.account_type in ['asset_receivable', 'liability_payable'])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
