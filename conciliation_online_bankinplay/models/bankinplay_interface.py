@@ -524,7 +524,7 @@ class BankinPlayInterface(models.AbstractModel):
                                         if move_line and move_line.account_id.account_type in [payable_account_type, receivable_account_type]:
                                             docs_to_reconcile.append({
                                                 'move_line': move_line,
-                                                'amount': importe_conciliado,
+                                                'amount': abs(importe_conciliado),
                                             })
 
                                 if docs_to_reconcile:
