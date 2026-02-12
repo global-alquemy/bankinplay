@@ -8,17 +8,21 @@ class BankinplayMassConfigWizard(models.TransientModel):
     _name = "bankinplay.mass.config.wizard"
     _description = "Bankinplay Mass Configuration Wizard"
 
-    company_id = fields.Many2one(
+    company_ids = fields.Many2many(
         comodel_name="res.company",
-        string="Company",
+        string="Companies",
         required=True,
-        default=lambda self: self.env.company,
+        default=lambda self: self.env["res.company"].sudo().search([]),
     )
     journal_ids = fields.Many2many(
         comodel_name="account.journal",
         string="Bank Journals",
-        domain="[('type', '=', 'bank'), ('company_id', '=', company_id)]",
-        required=True,
+        domain="[('type', '=', 'bank'), ('company_id', 'in', company_ids)]",
+    )
+    all_journals = fields.Boolean(
+        string="Select all bank journals",
+        default=True,
+        help="If checked, all bank journals of the selected companies will be configured.",
     )
     bankinplay_import_type = fields.Selection(
         [
@@ -50,7 +54,7 @@ class BankinplayMassConfigWizard(models.TransientModel):
     )
     interval_number = fields.Integer(
         string="Scheduled update interval",
-        default=1,
+        default=4,
         required=True,
     )
     statement_creation_mode = fields.Selection(
@@ -83,22 +87,33 @@ class BankinplayMassConfigWizard(models.TransientModel):
         except ImportError:
             return [('Europe/Madrid', 'Europe/Madrid'), ('UTC', 'UTC')]
 
-    @api.onchange('company_id')
-    def _onchange_company_id(self):
-        self.journal_ids = False
-        return {
-            'domain': {
-                'journal_ids': [('type', '=', 'bank'), ('company_id', '=', self.company_id.id)]
-            }
-        }
+    @api.onchange('company_ids')
+    def _onchange_company_ids(self):
+        if self.company_ids:
+            self.journal_ids = self.env['account.journal'].search([
+                ('type', '=', 'bank'),
+                ('company_id', 'in', self.company_ids.ids),
+            ])
+        else:
+            self.journal_ids = False
+
+    def _get_journals(self):
+        """Get journals to configure based on selection."""
+        if self.all_journals:
+            return self.env['account.journal'].sudo().search([
+                ('type', '=', 'bank'),
+                ('company_id', 'in', self.company_ids.ids),
+            ])
+        return self.journal_ids
 
     def _get_provider_vals(self, journal):
         """Prepare values for creating/updating the provider."""
+        company = journal.company_id
         return {
             'journal_id': journal.id,
             'service': 'bankinplay',
-            'username': self.company_id.bankinplay_apikey,
-            'password': self.company_id.bankinplay_apisecret,
+            'username': company.bankinplay_apikey,
+            'password': company.bankinplay_apisecret,
             'bankinplay_import_type': self.bankinplay_import_type,
             'bankinplay_date_field': self.bankinplay_date_field,
             'interval_type': self.interval_type,
@@ -112,21 +127,30 @@ class BankinplayMassConfigWizard(models.TransientModel):
         """Configure Bankinplay for selected journals."""
         self.ensure_one()
 
-        if not self.company_id.bankinplay_apikey or not self.company_id.bankinplay_apisecret:
+        if not self.company_ids:
+            raise UserError(_("Please select at least one company."))
+
+        # Check all companies have API keys
+        companies_sudo = self.company_ids.sudo()
+        missing = companies_sudo.filtered(
+            lambda c: not c.bankinplay_apikey or not c.bankinplay_apisecret
+        )
+        if missing:
             raise UserError(_(
-                "Please configure Bankinplay API Key and Secret in the company settings first.\n"
-                "Go to: Settings > Companies > Your Company > Bankinplay tab"
-            ))
+                "The following companies don't have Bankinplay API Key/Secret configured:\n%s\n\n"
+                "Go to: Settings > Companies > BankInPlay tab"
+            ) % "\n".join("- %s" % c.name for c in missing))
 
-        if not self.journal_ids:
-            raise UserError(_("Please select at least one bank journal."))
+        journals = self._get_journals()
+        if not journals:
+            raise UserError(_("No bank journals found for the selected companies."))
 
-        Provider = self.env['online.bank.statement.provider']
+        Provider = self.env['online.bank.statement.provider'].sudo()
         created_count = 0
         updated_count = 0
         skipped_journals = []
 
-        for journal in self.journal_ids:
+        for journal in journals:
             existing_provider = Provider.search([
                 ('journal_id', '=', journal.id)
             ], limit=1)
@@ -165,20 +189,4 @@ class BankinplayMassConfigWizard(models.TransientModel):
                 'type': 'success' if (created_count or updated_count) else 'warning',
                 'sticky': False,
             }
-        }
-
-    def action_select_all_journals(self):
-        """Select all bank journals for the current company."""
-        self.ensure_one()
-        journals = self.env['account.journal'].search([
-            ('type', '=', 'bank'),
-            ('company_id', '=', self.company_id.id),
-        ])
-        self.journal_ids = journals
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': self._name,
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
         }

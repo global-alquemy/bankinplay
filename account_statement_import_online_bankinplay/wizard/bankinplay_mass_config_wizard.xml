@@ -4,30 +4,29 @@
         <field name="name">bankinplay.mass.config.wizard.form</field>
         <field name="model">bankinplay.mass.config.wizard</field>
         <field name="arch" type="xml">
-            <form string="Configure Bankinplay for Multiple Journals">
+            <form string="Configuración masiva de extractos Bankinplay">
                 <group>
-                    <group string="Company">
-                        <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                    <group string="Compañías">
+                        <field name="company_ids" widget="many2many_tags"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Seleccionar compañías..."/>
                     </group>
-                    <group string="Journals">
+                    <group string="Diarios">
+                        <field name="all_journals"/>
                         <field name="journal_ids" widget="many2many_tags"
                                options="{'no_create': True}"
-                               placeholder="Select bank journals..."/>
-                        <button name="action_select_all_journals"
-                                string="Select All Bank Journals"
-                                type="object"
-                                class="btn-link"
-                                icon="fa-check-square-o"/>
+                               placeholder="Seleccionar diarios bancarios..."
+                               attrs="{'invisible': [('all_journals', '=', True)]}"/>
                     </group>
                 </group>
                 <group>
-                    <group string="Bankinplay Settings">
+                    <group string="Configuración Bankinplay">
                         <field name="bankinplay_import_type"/>
                         <field name="bankinplay_date_field"/>
                         <field name="tz"/>
                     </group>
-                    <group string="Schedule Settings">
-                        <label for="interval_number" string="Update Every"/>
+                    <group string="Planificación">
+                        <label for="interval_number" string="Actualizar cada"/>
                         <div class="o_row">
                             <field name="interval_number" class="oe_inline"/>
                             <field name="interval_type" class="oe_inline"/>
@@ -41,15 +40,15 @@
                     </group>
                 </group>
                 <footer>
-                    <button name="action_configure" string="Configure Selected Journals" type="object" class="btn-primary"/>
-                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    <button name="action_configure" string="Configurar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
     </record>
 
     <record id="action_bankinplay_mass_config_wizard" model="ir.actions.act_window">
-        <field name="name">Configure Bankinplay</field>
+        <field name="name">Configuración masiva extractos</field>
         <field name="res_model">bankinplay.mass.config.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

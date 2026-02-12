@@ -174,3 +174,32 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         company = self.company_id
         self.username = company.bankinplay_apikey
         self.password = company.bankinplay_apisecret
+
+    @api.model
+    def _cron_pull_bankinplay_from_january(self):
+        """Scheduled action: pull BankInPlay statements from 2026-01-01 to now."""
+        date_since = datetime(2026, 1, 1)
+        date_until = datetime.now()
+        providers = self.search([
+            ("active", "=", True),
+            ("service", "=", "bankinplay"),
+        ])
+        if not providers:
+            _logger.info("No active BankInPlay providers found.")
+            return
+        _logger.info(
+            "Cron BankInPlay: pulling statements from %s to %s for %d providers",
+            date_since, date_until, len(providers),
+        )
+        for provider in providers:
+            try:
+                _logger.info(
+                    "Cron BankInPlay: pulling journal '%s'",
+                    provider.journal_id.name,
+                )
+                provider._pull(date_since, date_until)
+            except Exception:
+                _logger.exception(
+                    "Cron BankInPlay: error pulling journal '%s'",
+                    provider.journal_id.name,
+                )

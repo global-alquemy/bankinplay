@@ -503,6 +503,23 @@ class BankinPlayInterface(models.AbstractModel):
             [('response_id', '=', response_id),
              ('signature', '=', signature)])
 
+        if not request_id or not request_id.event_data:
+            _logger.warning(
+                'No se encontró la petición original para el callback '
+                'con responseId: %s y signature: %s',
+                response_id, signature,
+            )
+            log_entry = self.env['bankinplay.log'].create({
+                'operation_type': 'response',
+                'request_data': '',
+                'response_data': data,
+                'status': 'error',
+                'notes': 'No se encontró petición original con event_data',
+                'response_id': response_id,
+                'signature': signature,
+            })
+            return log_entry, {}, request_id
+
         event_data = json.loads(request_id.event_data)
         access_data = event_data.get('access_data')
 

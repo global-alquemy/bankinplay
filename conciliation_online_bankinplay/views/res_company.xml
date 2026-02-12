@@ -5,33 +5,36 @@
         <field name="model">res.company</field>
         <field name="inherit_id" ref="account_statement_import_online_bankinplay.bankinplay_view_company_form" />
         <field name="arch" type="xml">
-            <button name="test_bankinplay_connection" position="after">
-                <br/>
-                <field name="bankinplay_enabled" readonly="0"></field>
+            <field name="bankinplay_company_id" position="after">
+                <field name="bankinplay_enabled"/>
                 <field name="bankinplay_start_date"/>
+                <field name="bankinplay_bank_statement_start_date"/>
+                <field name="bankinplay_bank_statements_synced"/>
                 <field name="bankinplay_partner_domain" widget="domain" options="{'model': 'res.partner', 'in_dialog': True}"/>
                 <field name="bankinplay_journal_ids" widget="many2many_tags"/>
-            </button>
-            <group name="bankinplay" position="after">
-                <group>
-                    <separator string="Plan contable"></separator>
-                    <br/>
-                    <button name="export_account_plan" type="object" string="Export Account Plan"/>
-                    <br/>
-                    <separator string="Plan analítico"></separator>
-                    <field name="bankinplay_analytic_plan_id" readonly="0"></field>
-                    <field name="bankinplay_analytic_line_id" readonly="0"></field>
-                    <button name="export_analytic_plan" type="object" string="Export Analytic Plan"/>
-                    <br/>
-                    <separator string="Terceros"></separator>
-                    <field name="bankinplay_manage_third_accounts"></field>
-                    <field name="bankinplay_last_syncdate"></field>
-                    <button name="bankinplay_export_documents" type="object" string="Export Documents"/>
-                    <button name="bankinplay_import_documents" type="object" string="Import Documents"/>
-                    <separator string="Apuntes contables"></separator>
-                    <br/>
-                    <button name="bankinplay_import_account_moves" type="object" string="Import Account Moves"/>
-                    <button name="bankinplay_export_account_move_line" type="object" string="Exportar Apuntes contables"/>
+            </field>
+            <group name="bankinplay_config" position="inside">
+                    <separator string="Configuración masiva" colspan="2"/>
+                    <button name="%(account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard)d" type="action" string="Configuración masiva extractos" icon="fa-cogs" class="btn-secondary w-100 mb-1" colspan="2"/>
+                    <button name="%(action_bankinplay_mass_company_wizard_server)d" type="action" string="Configuración masiva compañías" icon="fa-building" class="btn-secondary w-100 mb-1" colspan="2"/>
+
+            </group>
+            <group name="bankinplay-col2" position="inside">
+                <group string="Plan contable">
+                    <field name="bankinplay_analytic_plan_id" readonly="0"/>
+                    <field name="bankinplay_analytic_line_id" readonly="0"/>
+                    <button name="export_account_plan" type="object" string="Exportar plan contable" class="btn-primary w-100 mb-1" colspan="2"/>
+                    <button name="export_analytic_plan" type="object" string="Exportar plan analítico" class="btn-primary w-100 mb-1" colspan="2"/>
+                </group>
+                <group string="Terceros">
+                    <field name="bankinplay_manage_third_accounts"/>
+                    <field name="bankinplay_last_syncdate"/>
+                    <button name="bankinplay_export_documents" type="object" string="Exportar documentos" class="btn-primary w-100 mb-1" colspan="2"/>
+                    <button name="bankinplay_import_documents" type="object" string="Importar documentos" class="btn-primary w-100 mb-1" colspan="2"/>
+                </group>
+                <group string="Apuntes contables">
+                    <button name="bankinplay_import_account_moves" type="object" string="Importar movimientos contables" class="btn-primary w-100 mb-1" colspan="2"/>
+                    <button name="bankinplay_export_account_move_line" type="object" string="Exportar apuntes contables" class="btn-primary w-100 mb-1" colspan="2"/>
                 </group>
             </group>
         </field>

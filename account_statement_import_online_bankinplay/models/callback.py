@@ -24,8 +24,10 @@ class CallbackController(http.Controller):
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
-        
+
         # Obtener los datos del cuerpo de la solicitud
+        if not request_id or not request_id.event_data:
+            return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
         if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
@@ -66,6 +68,8 @@ class CallbackController(http.Controller):
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
         # Obtener los datos del cuerpo de la solicitud
+        if not request_id or not request_id.event_data:
+            return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
         if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
@@ -107,6 +111,8 @@ class CallbackController(http.Controller):
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data)
         # Obtener los datos del cuerpo de la solicitud
+        if not request_id or not request_id.event_data:
+            return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
         if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:

@@ -56,6 +56,17 @@ class ResCompany(models.Model):
     bankinplay_last_syncdate = fields.Date(
         string="Last Sync Date",
         help="Last Sync Date.",
+    )
+
+    bankinplay_bank_statement_start_date = fields.Date(
+        string="Fecha inicio extractos",
+        help="Fecha de inicio para la extracción de extractos bancarios desde BankInPlay.",
+    )
+
+    bankinplay_bank_statements_synced = fields.Boolean(
+        string="Extractos sincronizados",
+        default=False,
+        help="Indica si los extractos bancarios han sido sincronizados desde BankInPlay.",
     )    
 
     bankinplay_partner_domain = fields.Char(
