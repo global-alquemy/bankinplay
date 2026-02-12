@@ -13,7 +13,6 @@
     "depends": ["account_statement_import_online"],
     "data": [
         "security/ir.model.access.csv",
-        "data/ir_cron_data.xml",
         "wizard/bankinplay_mass_config_wizard.xml",
         "views/online_bank_statement_provider.xml",
         "views/res_company.xml",
