@@ -434,22 +434,28 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
         account_analytic_ids = self.env['account.analytic.account'].search(
             [('company_id', '=', company_id.id)])
-        analytics = []
+
+        if not account_analytic_ids:
+            raise UserError(_('No se han encontrado cuentas analíticas para la compañía %s') % company_id.name)
+
+        data = {}
+        errors = []
         for a in account_analytic_ids:
-            analytic = {
+            if not a.code:
+                _logger.warning("Cuenta analítica '%s' (id=%s) sin código, se omite", a.name, a.id)
+                continue
+            params = {
                 "codigo": a.code,
             }
-            analytics.append(analytic)
+            try:
+                data = self._post_request(access_data, url, {}, json.dumps(params))
+            except UserError as e:
+                error_msg = "Error al exportar código analítico '%s': %s" % (a.code, str(e))
+                _logger.error(error_msg)
+                errors.append(error_msg)
 
-            params = {
-                "codigos": analytics
-            }
-
-        for a in account_analytic_ids:
-            params = {
-                "codigo": a.code or "",
-            }
-            data = self._post_request(access_data, url, {}, json.dumps(params))
+        if errors:
+            raise UserError(_("Errores al exportar plan analítico:\n%s") % "\n".join(errors))
 
         return data
 

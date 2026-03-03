@@ -118,15 +118,21 @@ class ResCompany(models.Model):
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        if not self.bankinplay_analytic_plan_id:
-            analytic_plan_id = interface_model._create_analytic_plan(access_data)
-            self.bankinplay_analytic_plan_id = analytic_plan_id
-        
-        if not self.bankinplay_analytic_line_id:
-            analytic_line_id = interface_model._create_analytic_line(access_data, self.bankinplay_analytic_plan_id)
-            self.bankinplay_analytic_line_id = analytic_line_id
+        try:
+            if not self.bankinplay_analytic_plan_id:
+                analytic_plan_id = interface_model._create_analytic_plan(access_data)
+                self.bankinplay_analytic_plan_id = analytic_plan_id
 
-        interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
+            if not self.bankinplay_analytic_line_id:
+                analytic_line_id = interface_model._create_analytic_line(access_data, self.bankinplay_analytic_plan_id)
+                self.bankinplay_analytic_line_id = analytic_line_id
+
+            interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.exception("Error inesperado al exportar plan analítico para %s", self.name)
+            raise UserError(_("Error al exportar plan analítico: %s") % str(e))
         
     def bankinplay_export_account_move_line(self):  
         access_data = self.check_bankinplay_connection()
