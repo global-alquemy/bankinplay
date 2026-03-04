@@ -459,14 +459,39 @@ class BankinPlayInterface(models.AbstractModel):
 
         return data
 
+    # CALLBACKS
+
+    def _register_callback(self, access_data, event, target):
+        """Registra un callback en BankInPlay para un evento."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        params = {
+            "event": event,
+            "target": target
+        }
+        return self._post_request(access_data, url, {}, json.dumps(params))
+
+    def _get_callbacks(self, access_data):
+        """Obtiene los callbacks registrados en BankInPlay."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        headers = self._get_request_headers(access_data)
+        response = requests.get(url, headers=headers)
+        if response.status_code not in (200, 201):
+            raise UserError(
+                _("Error al obtener callbacks: %s %s")
+                % (response.status_code, response.text)
+            )
+        return json.loads(response.text)
+
     # CONCILIACIÓN
+
     def _import_conciliate_documents(self, access_data):
+        """Envía petición asíncrona de conciliación de terceros (callback)."""
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = access_data.get('company_id', False)
 
         params = {
             "sociedades": [company_id.bankinplay_company_id],
-            "deshabilitar_callback": True,
+            "deshabilitar_callback": False,
             "exportados": True
         }
 
@@ -477,8 +502,31 @@ class BankinPlayInterface(models.AbstractModel):
             params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime(
                 "%d/%m/%Y")
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        data = self._simple_post_request(access_data, url, {}, json.dumps(params))
+
+        event_data = {
+            "event": "exportacion_conciliacion_terceros",
+            "company_id": company_id.id,
+            "access_data": access_data
+        }
+
+        self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de conciliación terceros enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'exportacion_conciliacion_terceros',
+            'company_id': company_id.id,
+        })
+
+    def manage_conciliacion_terceros_callback(self, data, event_data):
+        """Procesa el callback de conciliación de terceros."""
+        company_id = self.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
 
         if data.get('sociedades'):
             sociedades = data.get('sociedades', [])
@@ -497,8 +545,6 @@ class BankinPlayInterface(models.AbstractModel):
                             documentos_por_movimiento[id_movimiento] = []
                         documentos_por_movimiento[id_movimiento].append(doc)
 
-                # _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
-
                 for id_movimiento, docs in documentos_por_movimiento.items():
                     _logger.info(
                         f"ID Movimiento: {id_movimiento} - Total documentos: {len(docs)}")
@@ -514,7 +560,6 @@ class BankinPlayInterface(models.AbstractModel):
                         if statement_line.unique_import_id == number:
 
                             try:
-                                # Recopilar las líneas de contrapartida con su importe conciliado
                                 docs_to_reconcile = []
 
                                 for conciliation in docs:
@@ -534,17 +579,12 @@ class BankinPlayInterface(models.AbstractModel):
                                             })
 
                                 if docs_to_reconcile:
-                                    # Obtener la línea de suspense del extracto bancario
                                     _liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
 
                                     if suspense_lines:
-                                        # Eliminar suspense lines y crear nuevas líneas con la cuenta
-                                        # correcta (la del documento) para poder reconciliar
                                         move = statement_line.move_id
                                         container = {"records": move, "self": move}
                                         lines_to_remove = [(2, line.id) for line in suspense_lines + other_lines]
-                                        # Cobro (amount > 0): contrapartida es credit
-                                        # Pago (amount < 0): contrapartida es debit
                                         is_credit = statement_line.amount > 0
                                         to_reconcile = []
 
@@ -558,8 +598,6 @@ class BankinPlayInterface(models.AbstractModel):
                                             for doc in docs_to_reconcile:
                                                 move_line = doc['move_line']
                                                 amount = doc['amount']
-                                                # Crear línea contrapartida con la cuenta del documento
-                                                # y el importe conciliado (no el total de la factura)
                                                 new_line = self.env['account.move.line'].with_context(
                                                     check_move_validity=False,
                                                     skip_sync_invoice=True,
@@ -588,23 +626,52 @@ class BankinPlayInterface(models.AbstractModel):
                                 })
 
         company_id.bankinplay_last_syncdate = datetime.today()
+        return True
 
     def _import_account_moves(self, access_data):
+        """Envía petición asíncrona de asientos contables (callback)."""
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
         company_id = access_data.get('company_id', False)
         params = {
             "fechaHasta": (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
-            "deshabilitar_callback": True
+            "deshabilitar_callback": False
         }
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        data = self._simple_post_request(access_data, url, {}, json.dumps(params))
 
-        _logger.info("DATA: %s", data)
+        event_data = {
+            "event": "asiento_contable",
+            "company_id": company_id.id,
+            "access_data": access_data
+        }
 
-        for asiento in data.get('results').get('asientos'):
-            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: x.unique_import_id and str(asiento.get('movimiento_id')) in (x.unique_import_id))
+        self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de asientos contables enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'asiento_contable',
+            'company_id': company_id.id,
+        })
+
+    def manage_asiento_contable_callback(self, data, event_data):
+        """Procesa el callback de asientos contables."""
+        company_id = self.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
+
+        _logger.info("Callback asiento contable - DATA: %s", data)
+
+        for asiento in (data.get('results') or {}).get('asientos', []):
+            movimiento_id = str(asiento.get('movimiento_id'))
+            statement_line = self.env['account.bank.statement.line'].search([
+                ('is_reconciled', '=', False),
+                ('unique_import_id', 'like', movimiento_id)
+            ], limit=1)
             if statement_line and not statement_line.is_reconciled:
                 journal_id = statement_line.journal_id
                 cuenta_bancaria = asiento.get('cuenta_bancaria')
@@ -614,7 +681,6 @@ class BankinPlayInterface(models.AbstractModel):
                           + str(asiento.get('movimiento_id'))
                           )
                 if statement_line.unique_import_id == number:
-                    # Crear líneas de asiento para la reconciliación
                     new_line_vals = []
 
                     for apunte in asiento.get('apuntes'):
@@ -622,8 +688,8 @@ class BankinPlayInterface(models.AbstractModel):
                             account_account = self.env['account.account'].search([('code', '=', apunte.get(
                                 'cuenta_contable')), ('company_id', '=', company_id.id)], limit=1)
                             if not account_account:
-                                raise UserError(
-                                    _("Account %s not found in the system." % apunte.get('cuenta_contable')))
+                                _logger.error("Account %s not found in the system.", apunte.get('cuenta_contable'))
+                                continue
 
                             credit = 0
                             debit = 0
@@ -643,8 +709,8 @@ class BankinPlayInterface(models.AbstractModel):
                                             account_analytic = self.env['account.analytic.account'].search(
                                                 [('name', 'ilike', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
                                         if not account_analytic:
-                                            raise UserError(_("Analytic Account %s not found in the system." % codigo_analitico)
-                                                            )
+                                            _logger.error("Analytic Account %s not found in the system.", codigo_analitico)
+                                            continue
                                         analytic_distribution[str(account_analytic.id)] = desglose.get('porcentaje', 100.0)
 
                             new_line_vals.append(Command.create({
@@ -656,12 +722,9 @@ class BankinPlayInterface(models.AbstractModel):
                                 'partner_id': statement_line.partner_id.id if statement_line.partner_id else False,
                             }))
 
-                    # Actualizar las líneas del movimiento del extracto bancario
                     if new_line_vals:
-                        # Obtener las líneas actuales
                         liquidity_lines, suspense_lines, other_lines = statement_line._seek_for_lines()
 
-                        # Eliminar solo la línea de suspense y agregar las nuevas contrapartidas
                         line_ids_commands = []
                         for line in suspense_lines:
                             line_ids_commands.append(Command.delete(line.id))
@@ -674,7 +737,7 @@ class BankinPlayInterface(models.AbstractModel):
                     statement_line.write({'bankinplay_conciliation': True})
                     self.env.cr.commit()
 
-        return data
+        return True
 
     def _export_account_move_lines(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"

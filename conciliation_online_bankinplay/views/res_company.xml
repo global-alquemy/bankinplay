@@ -14,6 +14,9 @@
                 <field name="bankinplay_journal_ids" widget="many2many_tags"/>
             </field>
             <group name="bankinplay_config" position="inside">
+                    <separator string="Callbacks" colspan="2"/>
+                    <button name="bankinplay_register_callbacks" type="object" string="Registrar Callbacks" icon="fa-link" class="btn-warning w-100 mb-1" colspan="2"/>
+                    <button name="bankinplay_check_callbacks" type="object" string="Comprobar Callbacks" icon="fa-check-circle" class="btn-info w-100 mb-1" colspan="2"/>
                     <separator string="Configuración masiva" colspan="2"/>
                     <button name="%(account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard)d" type="action" string="Configuración masiva extractos" icon="fa-cogs" class="btn-secondary w-100 mb-1" colspan="2"/>
                     <button name="%(action_bankinplay_mass_company_wizard_server)d" type="action" string="Configuración masiva compañías" icon="fa-building" class="btn-secondary w-100 mb-1" colspan="2"/>
