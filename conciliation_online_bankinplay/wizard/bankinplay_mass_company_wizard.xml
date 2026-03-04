@@ -117,9 +117,6 @@
         </field>
     </record>
 
-    <!-- Remove old act_window action replaced by server action -->
-    <delete model="ir.actions.act_window" search="[('id', '=', ref('action_bankinplay_mass_company_wizard'))]"/>
-
     <record id="action_bankinplay_mass_company_wizard_server" model="ir.actions.server">
         <field name="name">Configuración masiva compañías</field>
         <field name="model_id" ref="model_bankinplay_mass_company_wizard"/>
