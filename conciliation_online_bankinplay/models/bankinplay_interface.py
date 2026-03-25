@@ -522,6 +522,8 @@ class BankinPlayInterface(models.AbstractModel):
             'triggered_event': 'exportacion_conciliacion_terceros',
             'company_id': company_id.id,
         })
+        # Commit para que el registro de log esté disponible cuando llegue el callback
+        self.env.cr.commit()
 
     def manage_conciliacion_terceros_callback(self, data, event_data):
         """Procesa el callback de conciliación de terceros."""
@@ -658,6 +660,10 @@ class BankinPlayInterface(models.AbstractModel):
             'triggered_event': 'asiento_contable',
             'company_id': company_id.id,
         })
+        # Commit para que el registro de log esté disponible cuando llegue el callback
+        # de BankInPlay. Sin este commit, el callback puede llegar antes de que la
+        # transacción del queue job finalice y no encontrar el registro.
+        self.env.cr.commit()
 
     def manage_asiento_contable_callback(self, data, event_data):
         """Procesa el callback de asientos contables."""

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="bankinplay_actions_wizard_form" model="ir.ui.view">
+        <field name="name">bankinplay.actions.wizard.form</field>
+        <field name="model">bankinplay.actions.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Acciones BankInPlay">
+                <group>
+                    <field name="company_id" options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <group>
+                    <group string="Apuntes contables">
+                        <button name="action_import_account_moves" type="object"
+                                string="Importar apuntes contables" icon="fa-download"
+                                class="btn-primary w-100 mb-1" colspan="2"/>
+                        <button name="action_export_account_move_line" type="object"
+                                string="Exportar apuntes contables" icon="fa-upload"
+                                class="btn-primary w-100 mb-1" colspan="2"/>
+                    </group>
+                    <group string="Terceros">
+                        <button name="action_import_documents" type="object"
+                                string="Importar terceros" icon="fa-download"
+                                class="btn-primary w-100 mb-1" colspan="2"/>
+                        <button name="action_export_documents" type="object"
+                                string="Exportar terceros" icon="fa-upload"
+                                class="btn-primary w-100 mb-1" colspan="2"/>
+                    </group>
+                </group>
+                <footer>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_actions_wizard" model="ir.actions.act_window">
+        <field name="name">Acciones BankInPlay</field>
+        <field name="res_model">bankinplay.actions.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_bankinplay_actions"
+              name="Acciones BankInPlay"
+              action="action_bankinplay_actions_wizard"
+              parent="account.account_banks_menu"
+              sequence="104"/>
+</odoo>

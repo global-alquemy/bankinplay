@@ -21,7 +21,7 @@ class ConciliationCallbackController(http.Controller):
         )
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
-            data)
+            data, triggered_event='exportacion_conciliacion_terceros')
 
         if not request_id or not request_id.event_data:
             return {"status": "error", "message": "No se encontró petición original"}
@@ -62,7 +62,7 @@ class ConciliationCallbackController(http.Controller):
         )
         interface_model = request.env["bankinplay.interface"]
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
-            data)
+            data, triggered_event='asiento_contable')
 
         if not request_id or not request_id.event_data:
             return {"status": "error", "message": "No se encontró petición original"}
