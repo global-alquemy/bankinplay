@@ -56,6 +56,17 @@ class ResCompany(models.Model):
     bankinplay_last_syncdate = fields.Date(
         string="Last Sync Date",
         help="Last Sync Date.",
+    )
+
+    bankinplay_bank_statement_start_date = fields.Date(
+        string="Fecha inicio extractos",
+        help="Fecha de inicio para la extracción de extractos bancarios desde BankInPlay.",
+    )
+
+    bankinplay_bank_statements_synced = fields.Boolean(
+        string="Extractos sincronizados",
+        default=False,
+        help="Indica si los extractos bancarios han sido sincronizados desde BankInPlay.",
     )    
 
     bankinplay_partner_domain = fields.Char(
@@ -107,39 +118,96 @@ class ResCompany(models.Model):
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        if not self.bankinplay_analytic_plan_id:
-            analytic_plan_id = interface_model._create_analytic_plan(access_data)
-            self.bankinplay_analytic_plan_id = analytic_plan_id
-        
-        if not self.bankinplay_analytic_line_id:
-            analytic_line_id = interface_model._create_analytic_line(access_data, self.bankinplay_analytic_plan_id)
-            self.bankinplay_analytic_line_id = analytic_line_id
+        try:
+            if not self.bankinplay_analytic_plan_id:
+                analytic_plan_id = interface_model._create_analytic_plan(access_data)
+                self.bankinplay_analytic_plan_id = analytic_plan_id
 
-        interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
+            if not self.bankinplay_analytic_line_id:
+                analytic_line_id = interface_model._create_analytic_line(access_data, self.bankinplay_analytic_plan_id)
+                self.bankinplay_analytic_line_id = analytic_line_id
+
+            interface_model._export_analytic_plan(access_data, self.bankinplay_analytic_line_id)
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.exception("Error inesperado al exportar plan analítico para %s", self.name)
+            raise UserError(_("Error al exportar plan analítico: %s") % str(e))
         
-    def bankinplay_export_account_move_line(self):  
+    def bankinplay_export_account_move_line(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
         interface_model._export_account_move_lines(access_data)
-        
+
+    def bankinplay_register_callbacks(self):
+        """Registra los callbacks de conciliación y asientos en BankInPlay."""
+        access_data = self.check_bankinplay_connection()
+        interface_model = self.env["bankinplay.interface"]
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+
+        callbacks = [
+            ("exportacion_conciliacion_terceros", base_url + "/webhook/conciliacionTerceros"),
+            ("asiento_contable", base_url + "/webhook/asientoContable"),
+            ("lectura_cierre", base_url + "/webhook/lectura_cierre"),
+            ("lectura_intradia", base_url + "/webhook/lectura_intradia"),
+            ("lectura_tarjeta", base_url + "/webhook/lectura_tarjeta"),
+        ]
+        for event, target in callbacks:
+            interface_model._register_callback(access_data, event, target)
+            _logger.info("Callback registrado: %s -> %s", event, target)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Callbacks registrados"),
+                'message': _("Se han registrado los callbacks de conciliación terceros y asientos contables en BankInPlay."),
+                'sticky': False,
+            }
+        }
+
+    def bankinplay_check_callbacks(self):
+        """Consulta los callbacks registrados en BankInPlay y los muestra."""
+        access_data = self.check_bankinplay_connection()
+        interface_model = self.env["bankinplay.interface"]
+        callbacks = interface_model._get_callbacks(access_data)
+
+        if not callbacks:
+            message = _("No hay callbacks registrados en BankInPlay.")
+        else:
+            lines = []
+            for cb in callbacks:
+                lines.append("• %s → %s" % (cb.get('tipo', ''), cb.get('target', '')))
+            message = "\n".join(lines)
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _("Callbacks registrados (%d)") % len(callbacks),
+                'message': message,
+                'sticky': True,
+            }
+        }
+
     #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
     def bankinplay_export_account_plan_button(self):
-        self.with_context(company_id=self.id).with_delay().export_account_plan()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).export_account_plan()
 
     def bankinplay_export_analytic_plan_button(self):
-        self.with_context(company_id=self.id).with_delay().export_analytic_plan()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).export_analytic_plan()
 
     def bankinplay_export_documents_button(self):
-        self.with_context(company_id=self.id).with_delay().bankinplay_export_documents()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_export_documents()
 
     def bankinplay_import_documents_button(self):
-        self.with_context(company_id=self.id).with_delay().bankinplay_import_documents()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_import_documents()
 
     def bankinplay_import_account_moves_button(self):
-        self.with_context(company_id=self.id).with_delay().bankinplay_import_account_moves()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_import_account_moves()
 
     def bankinplay_export_account_move_line_button(self):
-        self.with_context(company_id=self.id).with_delay().bankinplay_export_account_move_line()
+        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_export_account_move_line()
 
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
@@ -147,7 +215,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).export_account_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).export_account_plan()
             eta += interval
 
     def bankinplay_export_analytic_plan_cron(self):
@@ -155,7 +223,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).export_analytic_plan()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).export_analytic_plan()
             eta += interval
 
     def bankinplay_export_documents_cron(self):
@@ -163,7 +231,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_documents()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_export_documents()
             eta += interval
 
     def bankinplay_import_documents_cron(self):
@@ -171,7 +239,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_documents()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_import_documents()
             eta += interval
 
     def bankinplay_import_account_moves_cron(self):
@@ -179,7 +247,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_import_account_moves()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_import_account_moves()
             eta += interval
 
     def bankinplay_export_account_move_line_cron(self):
@@ -187,7 +255,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta).bankinplay_export_account_move_line()
+            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_export_account_move_line()
             eta += interval
         
     

@@ -1,0 +1,4 @@
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+
+from . import bankinplay_mass_company_wizard
+from . import bankinplay_actions_wizard

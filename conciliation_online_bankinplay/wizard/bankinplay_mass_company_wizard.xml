@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main wizard form -->
+    <record id="bankinplay_mass_company_wizard_form" model="ir.ui.view">
+        <field name="name">bankinplay.mass.company.wizard.form</field>
+        <field name="model">bankinplay.mass.company.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configuración masiva BankInPlay - Compañías">
+                <!-- Company selector -->
+                <group string="Selección de compañías">
+                    <group>
+                        <field name="select_all"/>
+                        <field name="select_pending"/>
+                    </group>
+                    <group>
+                        <field name="company_ids" widget="many2many_tags"
+                               options="{'no_create': True}"/>
+                    </group>
+                </group>
+
+                <notebook>
+                    <!-- Tab 1: Estado -->
+                    <page string="Estado" name="status">
+                        <field name="line_ids" nolabel="1">
+                            <tree create="false" delete="false">
+                                <field name="company_id"/>
+                                <field name="bankinplay_enabled" widget="boolean"/>
+                                <field name="bankinplay_company_id" string="BIP ID" optional="hide"/>
+                                <field name="bankinplay_start_date" optional="show"/>
+                                <field name="bankinplay_bank_statement_start_date" optional="show"/>
+                                <field name="bankinplay_bank_statements_synced" widget="boolean"/>
+                                <field name="provider_ratio" string="Proveedores"/>
+                                <field name="journal_names" optional="hide"/>
+                                <field name="status" widget="badge"
+                                       decoration-success="status == 'configured'"
+                                       decoration-warning="status == 'partial'"
+                                       decoration-danger="status == 'not_configured'"/>
+                                <field name="result_message" optional="hide"/>
+                                <button name="action_open_company"
+                                        type="object"
+                                        class="btn-link" icon="fa-pencil"
+                                        title="Abrir compañía"/>
+                            </tree>
+                        </field>
+                    </page>
+
+                    <!-- Tab 2: Configuración -->
+                    <page string="Configuración" name="config">
+                        <group>
+                            <group string="Credenciales BankInPlay">
+                                <field name="bankinplay_apikey"/>
+                                <field name="bankinplay_apisecret" password="True"/>
+                            </group>
+                            <group string="Configuración general">
+                                <field name="config_enabled"/>
+                                <field name="config_bank_statements_synced"/>
+                                <field name="bankinplay_start_date"/>
+                                <field name="bankinplay_bank_statement_start_date"/>
+                            </group>
+                        </group>
+                    </page>
+
+                    <!-- Tab 3: Acciones -->
+                    <page string="Acciones" name="actions">
+                        <group>
+                            <group string="Compañía">
+                                <field name="action_company_id"
+                                       options="{'no_create': True, 'no_open': True}"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Conexión">
+                                <button name="action_wiz_test_connection" type="object"
+                                        string="Probar conexión" icon="fa-plug"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                            </group>
+                            <group string="Plan contable">
+                                <button name="action_wiz_export_account_plan" type="object"
+                                        string="Exportar plan contable" icon="fa-sitemap"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                                <button name="action_wiz_export_analytic_plan" type="object"
+                                        string="Exportar plan analítico" icon="fa-bar-chart"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Documentos">
+                                <button name="action_wiz_export_documents" type="object"
+                                        string="Exportar documentos" icon="fa-upload"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                                <button name="action_wiz_import_documents" type="object"
+                                        string="Importar documentos" icon="fa-download"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                            </group>
+                            <group string="Apuntes contables">
+                                <button name="action_wiz_import_account_moves" type="object"
+                                        string="Importar movimientos contables" icon="fa-exchange"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                                <button name="action_wiz_export_account_move_line" type="object"
+                                        string="Exportar apuntes contables" icon="fa-share"
+                                        class="btn-primary w-100 mb-1" colspan="2"/>
+                            </group>
+                        </group>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button name="action_apply_config"
+                            string="Aplicar configuración"
+                            type="object" class="btn-primary"/>
+                    <button name="action_import_pending_statements"
+                            string="Importar extractos pendientes"
+                            type="object" class="btn-warning"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_mass_company_wizard_server" model="ir.actions.server">
+        <field name="name">Configuración masiva compañías</field>
+        <field name="model_id" ref="model_bankinplay_mass_company_wizard"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open_wizard()</field>
+    </record>
+
+    <menuitem id="menu_bankinplay_mass_company_config"
+              name="Configuración masiva Bankinplay (Compañías)"
+              action="action_bankinplay_mass_company_wizard_server"
+              parent="account.account_banks_menu"
+              sequence="103"/>
+</odoo>

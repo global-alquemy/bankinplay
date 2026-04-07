@@ -495,13 +495,31 @@ class BankinPlayInterface(models.AbstractModel):
 
         return True
 
-    def manage_generic_callback(self, data):
+    def manage_generic_callback(self, data, triggered_event=False):
         signature = data.get('signature')
         response_id = data.get('responseId')
 
         request_id = self.env['bankinplay.log'].sudo().search(
             [('response_id', '=', response_id),
              ('signature', '=', signature)])
+
+        if not request_id or not request_id.event_data:
+            _logger.warning(
+                'No se encontró la petición original para el callback '
+                'con responseId: %s y signature: %s',
+                response_id, signature,
+            )
+            log_entry = self.env['bankinplay.log'].create({
+                'operation_type': 'response',
+                'request_data': '',
+                'response_data': data,
+                'status': 'error',
+                'notes': 'No se encontró petición original con event_data',
+                'response_id': response_id,
+                'signature': signature,
+                'triggered_event': triggered_event,
+            })
+            return log_entry, {}, request_id
 
         event_data = json.loads(request_id.event_data)
         access_data = event_data.get('access_data')
@@ -518,6 +536,8 @@ class BankinPlayInterface(models.AbstractModel):
             'notes': '',
             'response_id': response_id,
             'signature': signature,
+            'triggered_event': triggered_event or request_id.triggered_event,
+            'company_id': request_id.company_id.id if request_id.company_id else False,
         })
 
         return log_entry, desencrypt_data, request_id

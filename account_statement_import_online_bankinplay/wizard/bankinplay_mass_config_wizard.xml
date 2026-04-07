@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="bankinplay_mass_config_wizard_form" model="ir.ui.view">
+        <field name="name">bankinplay.mass.config.wizard.form</field>
+        <field name="model">bankinplay.mass.config.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configuración masiva de extractos Bankinplay">
+                <group>
+                    <group string="Compañías">
+                        <field name="company_ids" widget="many2many_tags"
+                               options="{'no_create': True, 'no_open': True}"
+                               placeholder="Seleccionar compañías..."/>
+                    </group>
+                    <group string="Diarios">
+                        <field name="all_journals"/>
+                        <field name="journal_ids" widget="many2many_tags"
+                               options="{'no_create': True}"
+                               placeholder="Seleccionar diarios bancarios..."
+                               attrs="{'invisible': [('all_journals', '=', True)]}"/>
+                    </group>
+                </group>
+                <group>
+                    <group string="Configuración Bankinplay">
+                        <field name="bankinplay_import_type"/>
+                        <field name="bankinplay_date_field"/>
+                        <field name="tz"/>
+                    </group>
+                    <group string="Planificación">
+                        <label for="interval_number" string="Actualizar cada"/>
+                        <div class="o_row">
+                            <field name="interval_number" class="oe_inline"/>
+                            <field name="interval_type" class="oe_inline"/>
+                        </div>
+                        <field name="statement_creation_mode"/>
+                    </group>
+                </group>
+                <group>
+                    <group>
+                        <field name="overwrite_existing"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_configure" string="Configurar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_mass_config_wizard" model="ir.actions.act_window">
+        <field name="name">Configuración masiva extractos</field>
+        <field name="res_model">bankinplay.mass.config.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_bankinplay_mass_config"
+              name="Configuración masiva Bankinplay"
+              action="action_bankinplay_mass_config_wizard"
+              parent="account.account_banks_menu"
+              sequence="102"/>
+</odoo>

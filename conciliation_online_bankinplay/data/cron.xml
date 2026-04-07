@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<odoo noupdate="1">
+<odoo>
+    <data noupdate="1">
     <record id="process_export_third_documents" model="ir.cron">
         <field name="name">Bankinplay: Export third documents</field>
         <field name="model_id" ref="model_res_company"/>
@@ -40,7 +41,7 @@
         <field name="active" eval="False"/>
     </record>
 
-
+   
 
     <record id="process_bankinplay_import_account_moves" model="ir.cron">
         <field name="name">Bankinplay: Import account moves</field>
@@ -61,16 +62,5 @@
         <field name="numbercall">-1</field>
         <field name="active" eval="False"/>
     </record>
-
-    <record id="process_bankinplay_cancel_queue" model="ir.cron">
-        <field name="name">Bankinplay: Procesar cola de anulaciones</field>
-        <field name="model_id" ref="model_bankinplay_cancel_queue"/>
-        <field name="state">code</field>
-        <field name="code">model.search([('state', '=', 'pending')]).process_cancel_queue()</field>
-        <field name='interval_type'>minutes</field>
-        <field name='interval_number'>15</field>
-        <field name="numbercall">-1</field>
-        <field name="active" eval="True"/>
-    </record>
-
+    </data>
 </odoo>

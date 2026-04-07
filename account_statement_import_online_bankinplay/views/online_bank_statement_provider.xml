@@ -9,7 +9,9 @@
                 <group name="bankinplay" string="BankInPlay Config" attrs="{'invisible':[('service','!=','bankinplay')]}">
                     <field name="username" string="Api Key" />
                     <field name="password" string="Secret Key" />
-                    <button name="get_keys_from_company" string="Get keys from company" type="object" class="oe_highlight" />
+                    <div colspan="2">
+                        <button name="get_keys_from_company" string="Obtener claves de la empresa" type="object" class="btn-secondary w-100" />
+                    </div>
                     <field name="bankinplay_date_field" />
                     <field name="bankinplay_import_type" />
                     <field name="bankinplay_is_card" />

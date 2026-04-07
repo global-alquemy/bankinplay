@@ -46,6 +46,15 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         string='Número de tarjeta',
     )
 
+    @api.onchange('service')
+    def _onchange_service_bankinplay(self):
+        """Auto-fill credentials from company when bankinplay is selected."""
+        if self.service == 'bankinplay' and self.company_id:
+            if not self.username and self.company_id.bankinplay_apikey:
+                self.username = self.company_id.bankinplay_apikey
+            if not self.password and self.company_id.bankinplay_apisecret:
+                self.password = self.company_id.bankinplay_apisecret
+
     @api.model
     def _get_available_services(self):
         """Each provider model must register its service."""
@@ -165,3 +174,32 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         company = self.company_id
         self.username = company.bankinplay_apikey
         self.password = company.bankinplay_apisecret
+
+    @api.model
+    def _cron_pull_bankinplay_from_january(self):
+        """Scheduled action: pull BankInPlay statements from 2026-01-01 to now."""
+        date_since = datetime(2026, 1, 1)
+        date_until = datetime.now()
+        providers = self.search([
+            ("active", "=", True),
+            ("service", "=", "bankinplay"),
+        ])
+        if not providers:
+            _logger.info("No active BankInPlay providers found.")
+            return
+        _logger.info(
+            "Cron BankInPlay: pulling statements from %s to %s for %d providers",
+            date_since, date_until, len(providers),
+        )
+        for provider in providers:
+            try:
+                _logger.info(
+                    "Cron BankInPlay: pulling journal '%s'",
+                    provider.journal_id.name,
+                )
+                provider._pull(date_since, date_until)
+            except Exception:
+                _logger.exception(
+                    "Cron BankInPlay: error pulling journal '%s'",
+                    provider.journal_id.name,
+                )

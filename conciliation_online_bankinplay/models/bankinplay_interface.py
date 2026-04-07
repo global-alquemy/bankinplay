@@ -196,7 +196,8 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
 
         document_ids = self.env['account.move'].search([('invoice_date', '>', start_date), (
-            'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids)])
+            'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids),
+            ('amount_residual', '!=', 0)])
 
         for document in document_ids:
             name_job = "[BANKINPLAY] - FACTURA " + document.name
@@ -346,17 +347,10 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = access_data.get('company_id', False)
 
-        # Buscar apuntes no enviados O que requieren actualización
-        document_ids = self.env['account.move.line'].search([
-            ('company_id', '=', company_id.id),
-            ('date', '>=', start_date),
-            ('partner_id', '!=', False),
-            ('parent_state', '=', 'posted'),
-            ('journal_id', 'in', journal_ids),
-            '|',
-            ('bankinplay_sent', '=', False),
-            ('bankinplay_needs_update', '=', True)
-        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id.type in ['payable', 'receivable'] and (not x.move_id or x.move_id.can_be_paid_conciliated))
+        payable_type = self.env.ref("account.data_account_type_payable")
+        receivable_type = self.env.ref("account.data_account_type_receivable")
+        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
+            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids), ('amount_residual', '!=', 0)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id in [receivable_type, payable_type])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -428,14 +422,9 @@ class BankinPlayInterface(models.AbstractModel):
                     move_line = self.env['account.move.line'].search(
                         [('id', '=', tercero.get('id_documento_erp'))], limit=1)
                     if move_line:
-                        # Usar SQL directo para evitar disparar el write() y crear bucle
-                        self.env.cr.execute("""
-                            UPDATE account_move_line
-                            SET bankinplay_sent = TRUE,
-                                bankinplay_needs_update = FALSE
-                            WHERE id = %s
-                        """, (move_line.id,))
-                        move_line.invalidate_cache(['bankinplay_sent', 'bankinplay_needs_update'])
+                        move_line.write({
+                            "bankinplay_sent": True,
+                        })
                 
 
 
@@ -464,7 +453,7 @@ class BankinPlayInterface(models.AbstractModel):
 
         params = {
             "nombre": "PL_" + company_id.vat.replace('ES', ''),
-            "codigoContabilidad": "Linea analitica - " + company_id.name
+            "codigoContabilidad": "LA - " + company_id.name[:40]
         }
 
         data = self._post_request(access_data, url, {}, json.dumps(params))
@@ -481,33 +470,64 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = access_data.get('company_id', False)
         account_analytic_ids = self.env['account.analytic.account'].search(
             [('company_id', '=', company_id.id)])
-        analytics = []
-        for a in account_analytic_ids:
-            analytic = {
-                "codigo": a.name,
-            }
-            analytics.append(analytic)
 
-        params = {
-            "codigos": analytics
-        }
+        if not account_analytic_ids:
+            raise UserError(_('No se han encontrado cuentas analíticas para la compañía %s') % company_id.name)
 
+        data = {}
+        errors = []
         for a in account_analytic_ids:
+            if not a.code:
+                _logger.warning("Cuenta analítica '%s' (id=%s) sin código, se omite", a.name, a.id)
+                continue
             params = {
-                "codigo": a.name,
+                "codigo": a.code,
             }
-            data = self._post_request(access_data, url, {}, json.dumps(params))
+            try:
+                data = self._post_request(access_data, url, {}, json.dumps(params))
+            except UserError as e:
+                error_msg = "Error al exportar código analítico '%s': %s" % (a.code, str(e))
+                _logger.error(error_msg)
+                errors.append(error_msg)
+
+        if errors:
+            raise UserError(_("Errores al exportar plan analítico:\n%s") % "\n".join(errors))
 
         return data
 
+    # CALLBACKS
+
+    def _register_callback(self, access_data, event, target):
+        """Registra un callback en BankInPlay para un evento."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        params = {
+            "event": event,
+            "target": target
+        }
+        return self._post_request(access_data, url, {}, json.dumps(params))
+
+    def _get_callbacks(self, access_data):
+        """Obtiene los callbacks registrados en BankInPlay."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        headers = self._get_request_headers(access_data)
+        response = requests.get(url, headers=headers)
+        if response.status_code not in (200, 201):
+            raise UserError(
+                _("Error al obtener callbacks: %s %s")
+                % (response.status_code, response.text)
+            )
+        return json.loads(response.text)
+
     # CONCILIACIÓN
+
     def _import_conciliate_documents(self, access_data):
+        """Envía petición asíncrona de conciliación de terceros (callback)."""
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = access_data.get('company_id', False)
 
         params = {
             "sociedades": [company_id.bankinplay_company_id],
-            "deshabilitar_callback": True,
+            "deshabilitar_callback": False,
             "exportados": True
         }
 
@@ -518,8 +538,33 @@ class BankinPlayInterface(models.AbstractModel):
             params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime(
                 "%d/%m/%Y")
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        data = self._simple_post_request(access_data, url, {}, json.dumps(params))
+
+        event_data = {
+            "event": "exportacion_conciliacion_terceros",
+            "company_id": company_id.id,
+            "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
+        }
+
+        self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de conciliación terceros enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'exportacion_conciliacion_terceros',
+            'company_id': company_id.id,
+        })
+        # Commit para que el registro de log esté disponible cuando llegue el callback
+        self.env.cr.commit()
+
+    def manage_conciliacion_terceros_callback(self, data, event_data):
+        """Procesa el callback de conciliación de terceros."""
+        company_id = self.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
 
         if data.get('sociedades'):
             sociedades = data.get('sociedades', [])
@@ -527,10 +572,8 @@ class BankinPlayInterface(models.AbstractModel):
             if sociedades:
                 documentos = sociedades[0].get('documentos', [])
 
-                payable_account_type = self.env.ref(
-                    "account.data_account_type_payable")
-                receivable_account_type = self.env.ref(
-                    "account.data_account_type_receivable")
+                payable_account_type = self.env.ref("account.data_account_type_payable")
+                receivable_account_type = self.env.ref("account.data_account_type_receivable")
 
                 documentos_por_movimiento = {}
                 for doc in documentos:
@@ -539,8 +582,6 @@ class BankinPlayInterface(models.AbstractModel):
                         if id_movimiento not in documentos_por_movimiento:
                             documentos_por_movimiento[id_movimiento] = []
                         documentos_por_movimiento[id_movimiento].append(doc)
-
-                # _logger.info("DOCUMENTOS POR MOVIMIENTO: %s", documentos_por_movimiento)
 
                 for id_movimiento, docs in documentos_por_movimiento.items():
                     _logger.info(
@@ -557,48 +598,37 @@ class BankinPlayInterface(models.AbstractModel):
                         if statement_line.unique_import_id == number:
 
                             try:
-                                if statement_line.is_reconciled:
-                                    statement_line.button_undo_reconciliation()
-
-                                counterparts = []
+                                docs_to_reconcile = []
 
                                 for conciliation in docs:
-                                    move_line_id = conciliation.get(
-                                        'id_documento_erp')
+                                    move_line_id = conciliation.get('id_documento_erp')
+                                    importe_conciliado = conciliation.get('importe_conciliado', 0)
 
-                                    if move_line_id:
+                                    if move_line_id and importe_conciliado:
                                         move_line = self.env['account.move.line'].search([
                                             ('id', '=', int(move_line_id)),
                                             ('parent_state', '=', 'posted')
                                         ], limit=1)
 
-                                        # Validar can_be_paid_conciliated: solo conciliar si la factura lo permite
-                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type] and (not move_line.move_id or move_line.move_id.can_be_paid_conciliated):
-
-                                            debit = 0
-                                            credit = 0
-
-                                            importe_conciliado = abs(
-                                                conciliation.get('importe_conciliado', 0))
-
-                                            if move_line.debit:
-                                                credit = importe_conciliado
-                                            else:
-                                                debit = importe_conciliado
-
-                                            counterparts.append({
-                                                'name': move_line.name,
-                                                'credit': credit,
-                                                'debit': debit,
+                                        if move_line and move_line.account_id.user_type_id in [payable_account_type, receivable_account_type]:
+                                            docs_to_reconcile.append({
                                                 'move_line': move_line,
+                                                'amount': abs(importe_conciliado),
                                             })
 
-                                if counterparts:
-                                    statement_line.process_reconciliation_oca(
-                                        counterparts,
-                                        [],
-                                        []
-                                    )
+                                if docs_to_reconcile:
+                                    is_credit = statement_line.amount > 0
+                                    counterparts = []
+                                    for doc in docs_to_reconcile:
+                                        move_line = doc['move_line']
+                                        amount = doc['amount']
+                                        counterparts.append({
+                                            'move_line': move_line,
+                                            'name': statement_line.payment_ref or move_line.name,
+                                            'debit': 0.0 if is_credit else amount,
+                                            'credit': amount if is_credit else 0.0,
+                                        })
+                                    statement_line.process_reconciliation_oca(counterparts, [], [])
                                     self.env.cr.commit()
 
                             except Exception as e:
@@ -611,23 +641,56 @@ class BankinPlayInterface(models.AbstractModel):
                                 })
 
         company_id.bankinplay_last_syncdate = datetime.today()
+        return True
 
     def _import_account_moves(self, access_data):
+        """Envía petición asíncrona de asientos contables (callback)."""
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
         company_id = access_data.get('company_id', False)
         params = {
             "fechaHasta": (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
-            "deshabilitar_callback": True
+            "deshabilitar_callback": False
         }
 
-        data = self._get_pending_async_request(
-            access_data, self._post_request(access_data, url, {}, json.dumps(params)))
+        data = self._simple_post_request(access_data, url, {}, json.dumps(params))
 
-        _logger.info("DATA: %s", data)
+        event_data = {
+            "event": "asiento_contable",
+            "company_id": company_id.id,
+            "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
+        }
 
-        for asiento in data.get('results').get('asientos'):
-            statement_line = self.env['account.bank.statement.line'].search([('is_reconciled', '=', False)]).filtered(lambda x: x.unique_import_id and str(asiento.get('movimiento_id')) in (x.unique_import_id))
+        self.env['bankinplay.log'].create({
+            'operation_type': 'request',
+            'request_data': json.dumps(params),
+            'response_data': json.dumps(data),
+            'status': 'pending',
+            'notes': 'Petición de asientos contables enviada a BankInPlay',
+            'response_id': data.get('responseId', ''),
+            'signature': data.get('signature', ''),
+            'event_data': json.dumps(event_data),
+            'triggered_event': 'asiento_contable',
+            'company_id': company_id.id,
+        })
+        # Commit para que el registro de log esté disponible cuando llegue el callback
+        # de BankInPlay. Sin este commit, el callback puede llegar antes de que la
+        # transacción del queue job finalice y no encontrar el registro.
+        self.env.cr.commit()
+
+    def manage_asiento_contable_callback(self, data, event_data):
+        """Procesa el callback de asientos contables."""
+        company_id = self.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
+
+        _logger.info("Callback asiento contable - DATA: %s", data)
+
+        for asiento in (data.get('results') or {}).get('asientos', []):
+            movimiento_id = str(asiento.get('movimiento_id'))
+            statement_line = self.env['account.bank.statement.line'].search([
+                ('is_reconciled', '=', False),
+                ('unique_import_id', 'like', movimiento_id)
+            ], limit=1)
             if statement_line and not statement_line.is_reconciled:
                 journal_id = statement_line.journal_id
                 cuenta_bancaria = asiento.get('cuenta_bancaria')
@@ -637,10 +700,6 @@ class BankinPlayInterface(models.AbstractModel):
                           + str(asiento.get('movimiento_id'))
                           )
                 if statement_line.unique_import_id == number:
-
-                    statement_line.line_ids.remove_move_reconcile()
-                    statement_line.payment_ids.unlink()
-
                     new_line_vals = []
 
                     for apunte in asiento.get('apuntes'):
@@ -648,46 +707,47 @@ class BankinPlayInterface(models.AbstractModel):
                             account_account = self.env['account.account'].search([('code', '=', apunte.get(
                                 'cuenta_contable')), ('company_id', '=', company_id.id)], limit=1)
                             if not account_account:
-                                raise UserError(
-                                    _("Account %s not found in the system." % apunte.get('cuenta_contable')))
+                                _logger.error("Account %s not found in the system.", apunte.get('cuenta_contable'))
+                                continue
 
                             credit = 0
                             debit = 0
                             if apunte.get('debe_haber') == 'D':
-                                credit = apunte.get('importe')
-                            else:
                                 debit = apunte.get('importe')
+                            else:
+                                credit = apunte.get('importe')
 
                             analytic_account_id = False
                             if apunte.get('analitica'):
                                 for analitica in apunte.get('analitica'):
                                     for desglose in analitica.get('desglose'):
+                                        codigo_analitico = desglose.get('codigo_analitico')
                                         account_analytic = self.env['account.analytic.account'].search(
-                                            [('name', '=', desglose.get('codigo_analitico')), ('company_id', '=', company_id.id)], limit=1)
+                                            [('code', '=', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
                                         if not account_analytic:
-                                            raise UserError(_("Analytic Account %s not found in the system." % desglose.get('codigo_analitico'))
-                                                            )
+                                            account_analytic = self.env['account.analytic.account'].search(
+                                                [('name', 'ilike', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
+                                        if not account_analytic:
+                                            _logger.error("Analytic Account %s not found in the system.", codigo_analitico)
+                                            continue
                                         analytic_account_id = account_analytic.id
 
                             new_line_vals.append({
                                 'name': asiento.get('descripcion'),
-                                'credit': debit,
-                                'debit': credit,
+                                'debit': debit,
+                                'credit': credit,
                                 'account_id': account_account.id,
-                                'analytic_account_id': analytic_account_id
-
+                                'analytic_account_id': analytic_account_id,
+                                'partner_id': statement_line.partner_id.id if statement_line.partner_id else False,
                             })
 
-                    moves = statement_line.process_reconciliation_oca(
-                        [],
-                        [],
-                        new_line_vals
-                    )
+                    if new_line_vals:
+                        statement_line.process_reconciliation_oca([], [], new_line_vals)
 
                     statement_line.write({'bankinplay_conciliation': True})
                     self.env.cr.commit()
 
-        return data
+        return True
 
     def _export_account_move_lines(self, access_data):
         url = BANKINPLAY_ENDPOINT_V1 + "/apunteContableApi/apunte_contable"

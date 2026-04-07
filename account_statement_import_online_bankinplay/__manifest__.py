@@ -4,7 +4,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 {
     "name": "Online Bank Statements: BankInPlay",
-    "version": "15.0.6.0.3",
+    "version": "15.0.1.0.0",
     "category": "Account",
     "author": "Alquemy",
     "website": "https://www.alquemy.es",
@@ -13,6 +13,7 @@
     "depends": ["account_statement_import_online"],
     "data": [
         "security/ir.model.access.csv",
+        "wizard/bankinplay_mass_config_wizard.xml",
         "views/online_bank_statement_provider.xml",
         "views/res_company.xml",
         "views/bankinplay_log.xml",

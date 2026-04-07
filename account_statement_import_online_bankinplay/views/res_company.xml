@@ -7,16 +7,22 @@
         <field name="arch" type="xml">
             <notebook position="inside">
                 <page name="bankinplay" string="BankInPlay">
-                    <group name="bankinplay-col1">
-                        <group name="bankinplay" string="BankInPlay Config">
-                            <field name="bankinplay_apikey"/>
-                            <field name="bankinplay_apisecret"/>
-                            <field name="bankinplay_company_id" readonly="1"></field>
-                            <button name="test_bankinplay_connection" type="object" string="Test Connection" icon="fa-television"/>
+                    <group name="bankinplay-columns">
+                        <group name="bankinplay-col1">
+                            <group name="bankinplay" string="BankInPlay Config">
+                                <field name="bankinplay_apikey"/>
+                                <field name="bankinplay_apisecret"/>
+                                <field name="bankinplay_company_id" readonly="1"/>
+                                <button name="test_bankinplay_connection" colspan="2" type="object" string="Test Connection" icon="fa-television" class="btn-primary w-100 mb-2"/>
+                            </group>
+                            <group name="bankinplay_config">
+                                
+                            </group>
+                        </group>
+                        <group name="bankinplay-col2">
                         </group>
                     </group>
-                    <group name="bankinplay-col2">
-                    </group>
+                    
                 </page>
             </notebook>
 
