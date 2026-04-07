@@ -59,6 +59,15 @@
         <field name="context">{'search_default_pending': 1}</field>
     </record>
 
+    <!-- Menú: Cola de anulaciones bajo Contabilidad > Bancos -->
+    <menuitem
+        id="menu_bankinplay_cancel_queue"
+        name="BankInPlay: Cola de anulaciones"
+        parent="account.account_banks_menu"
+        action="bankinplay_cancel_queue_action"
+        sequence="25"
+        groups="account.group_account_manager"/>
+
     <!-- Search View -->
     <record id="bankinplay_cancel_queue_search" model="ir.ui.view">
         <field name="name">bankinplay.cancel.queue.search</field>
