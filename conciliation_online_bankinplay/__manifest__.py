@@ -4,7 +4,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 {
     "name": "Online Conciliation: BankInPlay",
-    "version": "15.0.1.1.0",
+    "version": "15.0.1.2.0",
     "category": "Account",
     "author": "Alquemy",
     "website": "https://www.alquemy.es",

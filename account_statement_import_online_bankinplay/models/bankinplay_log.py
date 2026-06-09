@@ -1,5 +1,10 @@
+import logging
 from odoo import models, fields, api
-from datetime import datetime
+from datetime import datetime, timedelta
+
+_logger = logging.getLogger(__name__)
+
+DEFAULT_RETENTION_DAYS = 7
 
 
 class BankinplayLog(models.Model):
@@ -39,3 +44,29 @@ class BankinplayLog(models.Model):
     def set_status(self, status):
         self.ensure_one()
         self.status = status
+
+    @api.model
+    def _cron_purge_logs(self):
+        """Purga programada del histórico de logs.
+
+        Elimina los registros 'bankinplay.log' más antiguos que el periodo de
+        retención configurado en el parámetro global
+        'bankinplay.log_retention_days' (en días). Un valor menor o igual a 0
+        desactiva la purga automática.
+        """
+        param = self.env['ir.config_parameter'].sudo().get_param(
+            'bankinplay.log_retention_days', DEFAULT_RETENTION_DAYS)
+        try:
+            retention_days = int(param)
+        except (TypeError, ValueError):
+            retention_days = DEFAULT_RETENTION_DAYS
+        if retention_days <= 0:
+            return
+        cutoff = fields.Datetime.now() - timedelta(days=retention_days)
+        old_logs = self.sudo().search([('date_time', '<', cutoff)])
+        count = len(old_logs)
+        if count:
+            old_logs.unlink()
+            _logger.info(
+                "Bankinplay: purgados %d registro(s) de log anteriores a %s "
+                "(retención: %d días)", count, cutoff, retention_days)

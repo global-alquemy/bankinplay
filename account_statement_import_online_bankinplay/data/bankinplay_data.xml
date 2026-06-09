@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Canal de queue_job dedicado a los procesos de BankInPlay.
+             complete_name resultante: 'root.bankinplay' -->
+        <record id="channel_bankinplay" model="queue.job.channel">
+            <field name="name">bankinplay</field>
+            <field name="parent_id" ref="queue_job.channel_root"/>
+        </record>
+
+        <!-- Parámetros de configuración globales -->
+        <!-- Canal de queue_job que usarán los procesos de BankInPlay.
+             Vacío = no se fuerza canal (se usa el del job/por defecto). -->
+        <record id="param_job_channel" model="ir.config_parameter">
+            <field name="key">bankinplay.job_channel</field>
+            <field name="value">root.bankinplay</field>
+        </record>
+
+        <!-- Días de retención del histórico de logs (purga automática). -->
+        <record id="param_log_retention_days" model="ir.config_parameter">
+            <field name="key">bankinplay.log_retention_days</field>
+            <field name="value">7</field>
+        </record>
+
+        <!-- Volcado detallado al log de Odoo (desactivado por defecto). -->
+        <record id="param_logging_enabled" model="ir.config_parameter">
+            <field name="key">bankinplay.logging_enabled</field>
+            <field name="value">False</field>
+        </record>
+
+        <!-- Purga programada del histórico de logs -->
+        <record id="cron_purge_bankinplay_log" model="ir.cron">
+            <field name="name">Bankinplay: Purgar histórico de logs</field>
+            <field name="model_id" ref="model_bankinplay_log"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_purge_logs()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

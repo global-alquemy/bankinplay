@@ -199,10 +199,15 @@ class BankinPlayInterface(models.AbstractModel):
             'state', '=', 'posted'), ('bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids),
             ('amount_residual', '!=', 0)])
 
+        channel = self.env['ir.config_parameter'].sudo().get_param(
+            'bankinplay.job_channel')
+        delay_kw = {'priority': 20, 'max_retries': 5}
+        if channel:
+            delay_kw['channel'] = channel
         for document in document_ids:
             name_job = "[BANKINPLAY] - FACTURA " + document.name
-            document.with_delay(priority=20, max_retries=5,
-                                description=name_job).bankinplay_send_move()
+            document.with_delay(description=name_job,
+                                **delay_kw).bankinplay_send_move()
 
         return document_ids
 
@@ -561,6 +566,31 @@ class BankinPlayInterface(models.AbstractModel):
         # Commit para que el registro de log esté disponible cuando llegue el callback
         self.env.cr.commit()
 
+    def _log_validation_error(self, reason, triggered_event=False,
+                              company_id=False, payload=None):
+        """Registra en 'bankinplay.log' un fallo de validación detectado al
+        procesar un callback de recepción (documentos de terceros / asientos).
+
+        Estos fallos antes se descartaban en silencio o sólo se escribían al
+        log de Python; ahora quedan en el histórico de BankInPlay con
+        status='error' para poder analizarlos."""
+        _logger.warning("BankInPlay validación: %s", reason)
+        try:
+            payload_str = (
+                payload if isinstance(payload, str)
+                else json.dumps(payload, default=str)
+            ) if payload is not None else False
+        except (TypeError, ValueError):
+            payload_str = str(payload)
+        return self.env['bankinplay.log'].sudo().create({
+            'operation_type': 'error',
+            'status': 'error',
+            'notes': reason,
+            'response_data': payload_str,
+            'triggered_event': triggered_event,
+            'company_id': company_id.id if company_id else False,
+        })
+
     def manage_conciliacion_terceros_callback(self, data, event_data):
         """Procesa el callback de conciliación de terceros."""
         company_id = self.env['res.company'].sudo().browse(
@@ -584,8 +614,9 @@ class BankinPlayInterface(models.AbstractModel):
                         documentos_por_movimiento[id_movimiento].append(doc)
 
                 for id_movimiento, docs in documentos_por_movimiento.items():
-                    _logger.info(
-                        f"ID Movimiento: {id_movimiento} - Total documentos: {len(docs)}")
+                    self._log_info(
+                        "ID Movimiento: %s - Total documentos: %s",
+                        id_movimiento, len(docs))
                     statement_line = self.env['account.bank.statement.line'].search([
                         ('is_reconciled', '=', False),
                         ('unique_import_id', 'like', id_movimiento)
@@ -615,6 +646,14 @@ class BankinPlayInterface(models.AbstractModel):
                                                 'move_line': move_line,
                                                 'amount': abs(importe_conciliado),
                                             })
+                                        else:
+                                            self._log_validation_error(
+                                                "Conciliación terceros: apunte %s no válido "
+                                                "(inexistente, no contabilizado o cuenta que no es "
+                                                "de cliente/proveedor) para el movimiento %s" % (
+                                                    move_line_id, id_movimiento),
+                                                triggered_event='exportacion_conciliacion_terceros',
+                                                company_id=company_id, payload=conciliation)
 
                                 if docs_to_reconcile:
                                     is_credit = statement_line.amount > 0
@@ -632,13 +671,24 @@ class BankinPlayInterface(models.AbstractModel):
                                     self.env.cr.commit()
 
                             except Exception as e:
-                                error = f"Error al conciliar documento: {e}"
-                                _logger.error(error)
-                                self.env['bankinplay.log'].create({
-                                    'operation_type': 'error',
-                                    'response_data': error,
-                                    'status': 'error',
-                                })
+                                self._log_validation_error(
+                                    "Error al conciliar documento (movimiento %s): %s" % (
+                                        id_movimiento, e),
+                                    triggered_event='exportacion_conciliacion_terceros',
+                                    company_id=company_id, payload=docs)
+                        else:
+                            self._log_validation_error(
+                                "Conciliación terceros: el identificador no coincide para el "
+                                "movimiento %s (extracto: %s / recibido: %s)" % (
+                                    id_movimiento, statement_line.unique_import_id, number),
+                                triggered_event='exportacion_conciliacion_terceros',
+                                company_id=company_id, payload=docs)
+                    else:
+                        self._log_validation_error(
+                            "Conciliación terceros: no se encontró línea de extracto sin "
+                            "conciliar para el movimiento %s" % id_movimiento,
+                            triggered_event='exportacion_conciliacion_terceros',
+                            company_id=company_id, payload=docs)
 
         company_id.bankinplay_last_syncdate = datetime.today()
         return True
@@ -683,7 +733,7 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = self.env['res.company'].sudo().browse(
             event_data.get('company_id'))
 
-        _logger.info("Callback asiento contable - DATA: %s", data)
+        self._log_info("Callback asiento contable - DATA: %s", data)
 
         for asiento in (data.get('results') or {}).get('asientos', []):
             movimiento_id = str(asiento.get('movimiento_id'))
@@ -707,7 +757,12 @@ class BankinPlayInterface(models.AbstractModel):
                             account_account = self.env['account.account'].search([('code', '=', apunte.get(
                                 'cuenta_contable')), ('company_id', '=', company_id.id)], limit=1)
                             if not account_account:
-                                _logger.error("Account %s not found in the system.", apunte.get('cuenta_contable'))
+                                self._log_validation_error(
+                                    "Asiento contable: cuenta contable %s no encontrada "
+                                    "para el movimiento %s" % (
+                                        apunte.get('cuenta_contable'), movimiento_id),
+                                    triggered_event='asiento_contable',
+                                    company_id=company_id, payload=apunte)
                                 continue
 
                             credit = 0
@@ -728,7 +783,12 @@ class BankinPlayInterface(models.AbstractModel):
                                             account_analytic = self.env['account.analytic.account'].search(
                                                 [('name', 'ilike', codigo_analitico), ('company_id', '=', company_id.id)], limit=1)
                                         if not account_analytic:
-                                            _logger.error("Analytic Account %s not found in the system.", codigo_analitico)
+                                            self._log_validation_error(
+                                                "Asiento contable: cuenta analítica %s no "
+                                                "encontrada para el movimiento %s" % (
+                                                    codigo_analitico, movimiento_id),
+                                                triggered_event='asiento_contable',
+                                                company_id=company_id, payload=desglose)
                                             continue
                                         analytic_account_id = account_analytic.id
 

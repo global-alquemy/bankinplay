@@ -190,24 +190,34 @@ class ResCompany(models.Model):
             }
         }
 
+    def _bankinplay_delay(self, **kw):
+        """Encola un job de queue_job aplicando el canal configurado de forma
+        global en el parámetro 'bankinplay.job_channel'. Si el parámetro está
+        vacío no se fuerza canal (se usa el del job / por defecto)."""
+        channel = self.env['ir.config_parameter'].sudo().get_param(
+            'bankinplay.job_channel')
+        if channel:
+            kw.setdefault('channel', channel)
+        return self.with_delay(**kw)
+
     #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
     def bankinplay_export_account_plan_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).export_account_plan()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).export_account_plan()
 
     def bankinplay_export_analytic_plan_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).export_analytic_plan()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).export_analytic_plan()
 
     def bankinplay_export_documents_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_export_documents()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).bankinplay_export_documents()
 
     def bankinplay_import_documents_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_import_documents()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).bankinplay_import_documents()
 
     def bankinplay_import_account_moves_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_import_account_moves()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).bankinplay_import_account_moves()
 
     def bankinplay_export_account_move_line_button(self):
-        self.with_context(company_id=self.id).with_delay(max_retries=0).bankinplay_export_account_move_line()
+        self.with_context(company_id=self.id)._bankinplay_delay(max_retries=0).bankinplay_export_account_move_line()
 
     #CRON################################
     def bankinplay_export_account_plan_cron(self):
@@ -215,7 +225,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).export_account_plan()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).export_account_plan()
             eta += interval
 
     def bankinplay_export_analytic_plan_cron(self):
@@ -223,7 +233,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).export_analytic_plan()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).export_analytic_plan()
             eta += interval
 
     def bankinplay_export_documents_cron(self):
@@ -231,7 +241,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_export_documents()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).bankinplay_export_documents()
             eta += interval
 
     def bankinplay_import_documents_cron(self):
@@ -239,7 +249,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_import_documents()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).bankinplay_import_documents()
             eta += interval
 
     def bankinplay_import_account_moves_cron(self):
@@ -247,7 +257,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_import_account_moves()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).bankinplay_import_account_moves()
             eta += interval
 
     def bankinplay_export_account_move_line_cron(self):
@@ -255,7 +265,7 @@ class ResCompany(models.Model):
         interval = with_delay_interval
         eta = 0
         for company in company_ids:
-            company.with_context(company_id=company.id).with_delay(eta=eta, max_retries=0).bankinplay_export_account_move_line()
+            company.with_context(company_id=company.id)._bankinplay_delay(eta=eta, max_retries=0).bankinplay_export_account_move_line()
             eta += interval
         
     
