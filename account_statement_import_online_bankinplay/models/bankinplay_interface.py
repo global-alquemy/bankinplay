@@ -31,6 +31,19 @@ class BankinPlayInterface(models.AbstractModel):
     _name = "bankinplay.interface"
     _description = "Interface to all interactions with Bankinplay API"
 
+    def _bankinplay_logging_enabled(self):
+        """Indica si el volcado al log de Odoo está activado (parámetro global)."""
+        return self.env["ir.config_parameter"].sudo().get_param(
+            "bankinplay.logging_enabled", "False"
+        ) == "True"
+
+    def _log_info(self, message, *args):
+        """Escribe en el log de Odoo a nivel info sólo si está activado por
+        el parámetro global 'bankinplay.logging_enabled'. Evita que el archivo
+        de log crezca en exceso cuando no se necesita la traza detallada."""
+        if self._bankinplay_logging_enabled():
+            _logger.info(message, *args)
+
     def _get_companies(self, access_data):
         """Get companies from bankingplay."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/sociedades"
@@ -51,7 +64,7 @@ class BankinPlayInterface(models.AbstractModel):
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
-        _logger.info(_("POST request on %s"), url)
+        self._log_info(_("POST request on %s"), url)
         response = requests.post(
             url,
             params=login_params,
@@ -77,7 +90,7 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _get_pending_async_request(self, access_data, data, params=[]):
         
-        _logger.info(
+        self._log_info(
             _("`POST` response data %s"), data
         )
 
@@ -118,7 +131,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _set_access_account(self, access_data, account_number):
         """Set bankinplay account for bank account in access_data."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/cuentaBancaria"
-        _logger.info(_("GET request on %s"), url)
+        self._log_info(_("GET request on %s"), url)
         response = requests.get(
             url, params={}, headers=self._get_request_headers(access_data)
         )
@@ -140,7 +153,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _set_access_card(self, access_data, account_number):
         """Set bankinplay account for bank card in access_data."""
         url = BANKINPLAY_ENDPOINT_V2 + "/entidad/tarjeta"
-        _logger.info(_("GET request on %s"), url)
+        self._log_info(_("GET request on %s"), url)
         response = requests.get(
             url, params={}, headers=self._get_request_headers(access_data)
         )
@@ -180,7 +193,7 @@ class BankinPlayInterface(models.AbstractModel):
         trans = []
         trans = data.get("results", [])
         if not trans:
-            _logger.info(
+            self._log_info(
                 _("No transactions where found in data %s"),
                 data,
             )
@@ -192,12 +205,12 @@ class BankinPlayInterface(models.AbstractModel):
                     if movimiento.get('num_tarjeta') == provider_id.bankinplay_card_number:
                         trans.append(movimiento)
 
-        _logger.info(
+        self._log_info(
             _("%d transactions present in response data"),
             len(trans),
         )
         for transaction in trans:
-            _logger.info(
+            self._log_info(
                 _("Transaction %s"),
                 transaction,
             )
@@ -206,7 +219,7 @@ class BankinPlayInterface(models.AbstractModel):
     def _get_request(self, access_data, url, params):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
-        _logger.info(
+        self._log_info(
             _("GET request to %s with headers %s and params %s"), url, headers, params
         )
         response = requests.get(url, params=params, headers=headers)
@@ -216,7 +229,7 @@ class BankinPlayInterface(models.AbstractModel):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
 
-        _logger.info(
+        self._log_info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
         response = requests.post(
@@ -228,7 +241,7 @@ class BankinPlayInterface(models.AbstractModel):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
 
-        _logger.info(
+        self._log_info(
             _("`POST` request to %s with headers %s and params %s and data %s"), url, headers, params, data
         )
 
@@ -252,7 +265,7 @@ class BankinPlayInterface(models.AbstractModel):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
 
-        _logger.info(
+        self._log_info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
         response = requests.put(url, params=params, headers=headers, data=data)
@@ -262,7 +275,7 @@ class BankinPlayInterface(models.AbstractModel):
         """Interact with Ponto to get next page of data."""
         headers = self._get_request_headers(access_data)
 
-        _logger.info(
+        self._log_info(
             _("`POST` request to %s with headers %s and params %s"), url, headers, params
         )
         response = requests.delete(
@@ -271,7 +284,7 @@ class BankinPlayInterface(models.AbstractModel):
 
     def _get_response_data(self, response, access_data=False):
         """Get response data for GET or POST request."""
-        _logger.info(_("HTTP answer code %s from BankInPlay"),
+        self._log_info(_("HTTP answer code %s from BankInPlay"),
                      response.status_code)
         
         

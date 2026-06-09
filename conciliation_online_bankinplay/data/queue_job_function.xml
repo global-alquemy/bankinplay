@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Habilita "Allow Commit" en las funciones de job que necesitan hacer
+            commit explícito dentro del queue job (persistir el registro
+            bankinplay.log antes de que llegue el callback asíncrono de
+            BankInPlay). Requiere OCA queue_job >= 16.0.3.0.0.
+            El name se fija explícitamente para que, en install_mode, queue_job
+            reutilice una función ya existente (rebind) en lugar de duplicarla.
+        -->
+        <record id="job_function_import_documents" model="queue.job.function">
+            <field name="name">&lt;res.company&gt;.bankinplay_import_documents</field>
+            <field name="channel_id" ref="queue_job.channel_root"/>
+            <field name="allow_commit" eval="True"/>
+        </record>
+
+        <record id="job_function_import_account_moves" model="queue.job.function">
+            <field name="name">&lt;res.company&gt;.bankinplay_import_account_moves</field>
+            <field name="channel_id" ref="queue_job.channel_root"/>
+            <field name="allow_commit" eval="True"/>
+        </record>
+    </data>
+</odoo>

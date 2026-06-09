@@ -16,6 +16,11 @@ _logger = logging.getLogger(__name__)
 class OnlineBankStatementProviderBankInPlay(models.Model):
     _inherit = "online.bank.statement.provider"
 
+    def _bp_log(self, message, *args):
+        """Log info condicionado al parámetro global 'bankinplay.logging_enabled'."""
+        if self.env["bankinplay.interface"]._bankinplay_logging_enabled():
+            _logger.info(message, *args)
+
     bankinplay_import_type = fields.Selection(
         [
             ("intraday", "Intraday"),
@@ -75,7 +80,7 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
     def _bankinplay_obtain_statement_data(self, date_since, date_until):
         """Translate information from BankInPlay to Odoo bank statement lines."""
         self.ensure_one()
-        _logger.debug(
+        self._bp_log(
             _("BankInPlay obtain statement data for journal %s from %s to %s"),
             self.journal_id.name,
             date_since,
@@ -129,8 +134,8 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
 
     def _bankinplay_get_card_transaction_vals(self, transaction, sequence):
         """Translate information from BankInPlay to statement line vals."""
-        _logger.info("BankInPlay get card transaction vals")
-        _logger.info(transaction)
+        self._bp_log("BankInPlay get card transaction vals")
+        self._bp_log("%s", transaction)
         datetime_str = transaction.get("fecha")
         date = self._bankinplay_datetime_from_string(datetime_str)
 
@@ -185,15 +190,15 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
             ("service", "=", "bankinplay"),
         ])
         if not providers:
-            _logger.info("No active BankInPlay providers found.")
+            self._bp_log("No active BankInPlay providers found.")
             return
-        _logger.info(
+        self._bp_log(
             "Cron BankInPlay: pulling statements from %s to %s for %d providers",
             date_since, date_until, len(providers),
         )
         for provider in providers:
             try:
-                _logger.info(
+                self._bp_log(
                     "Cron BankInPlay: pulling journal '%s'",
                     provider.journal_id.name,
                 )

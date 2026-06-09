@@ -154,7 +154,8 @@ class ResCompany(models.Model):
         ]
         for event, target in callbacks:
             interface_model._register_callback(access_data, event, target)
-            _logger.info("Callback registrado: %s -> %s", event, target)
+            if interface_model._bankinplay_logging_enabled():
+                _logger.info("Callback registrado: %s -> %s", event, target)
 
         return {
             'type': 'ir.actions.client',

@@ -11,8 +11,8 @@ class CallbackController(http.Controller):
 
     @http.route('/webhook/estado', auth='public', methods=['POST'], type='json')
     def callback_estado(self, **kw):
-        params = request.env['ir.config_parameter'].sudo()
-        _logger.info("Callback estado: %s", kw)
+        if request.env["bankinplay.interface"].sudo()._bankinplay_logging_enabled():
+            _logger.info("Callback estado: %s", kw)
         return {}
 
     @http.route('/webhook/lectura_cierre', auth='public', methods=['POST'], type='json')

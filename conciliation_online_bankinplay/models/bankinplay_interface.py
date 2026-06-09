@@ -522,7 +522,10 @@ class BankinPlayInterface(models.AbstractModel):
             'triggered_event': 'exportacion_conciliacion_terceros',
             'company_id': company_id.id,
         })
-        # Commit para que el registro de log esté disponible cuando llegue el callback
+        # Commit para que el registro de log esté disponible cuando llegue el
+        # callback asíncrono de BankInPlay. Este método corre como queue job, por
+        # lo que la función de job 'res.company.bankinplay_import_documents' tiene
+        # habilitado "Allow Commit" (ver data/queue_job_function.xml).
         self.env.cr.commit()
 
     def manage_conciliacion_terceros_callback(self, data, event_data):
@@ -548,7 +551,7 @@ class BankinPlayInterface(models.AbstractModel):
                         documentos_por_movimiento[id_movimiento].append(doc)
 
                 for id_movimiento, docs in documentos_por_movimiento.items():
-                    _logger.info(
+                    self._log_info(
                         f"ID Movimiento: {id_movimiento} - Total documentos: {len(docs)}")
                     statement_line = self.env['account.bank.statement.line'].search([
                         ('is_reconciled', '=', False),
@@ -660,9 +663,10 @@ class BankinPlayInterface(models.AbstractModel):
             'triggered_event': 'asiento_contable',
             'company_id': company_id.id,
         })
-        # Commit para que el registro de log esté disponible cuando llegue el callback
-        # de BankInPlay. Sin este commit, el callback puede llegar antes de que la
-        # transacción del queue job finalice y no encontrar el registro.
+        # Commit para que el registro de log esté disponible cuando llegue el
+        # callback asíncrono de BankInPlay. Este método corre como queue job, por
+        # lo que la función de job 'res.company.bankinplay_import_account_moves'
+        # tiene habilitado "Allow Commit" (ver data/queue_job_function.xml).
         self.env.cr.commit()
 
     def manage_asiento_contable_callback(self, data, event_data):
@@ -670,7 +674,7 @@ class BankinPlayInterface(models.AbstractModel):
         company_id = self.env['res.company'].sudo().browse(
             event_data.get('company_id'))
 
-        _logger.info("Callback asiento contable - DATA: %s", data)
+        self._log_info("Callback asiento contable - DATA: %s", data)
 
         for asiento in (data.get('results') or {}).get('asientos', []):
             movimiento_id = str(asiento.get('movimiento_id'))
