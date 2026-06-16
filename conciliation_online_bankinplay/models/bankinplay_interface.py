@@ -554,7 +554,6 @@ class BankinPlayInterface(models.AbstractModel):
         self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de conciliación terceros enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
@@ -586,7 +585,9 @@ class BankinPlayInterface(models.AbstractModel):
             'operation_type': 'error',
             'status': 'error',
             'notes': reason,
-            'response_data': payload_str,
+            # El contexto del fallo (documento/apunte concreto) es pequeño y
+            # legible: se guarda en desencrypt_data, no en response_data.
+            'desencrypt_data': payload_str,
             'triggered_event': triggered_event,
             'company_id': company_id.id if company_id else False,
         })
@@ -714,7 +715,6 @@ class BankinPlayInterface(models.AbstractModel):
         self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de asientos contables enviada a BankInPlay',
             'response_id': data.get('responseId', ''),

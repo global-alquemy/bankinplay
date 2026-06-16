@@ -26,6 +26,15 @@ BANKINPLAY_ENDPOINT = "https://app.bankinplay.com/intradia-core"
 BANKINPLAY_ENDPOINT_V1 = BANKINPLAY_ENDPOINT + "/api/v1"
 BANKINPLAY_ENDPOINT_V2 = BANKINPLAY_ENDPOINT + "/api/v2"
 
+# Eventos de lectura de extractos: su respuesta descifrada (desencrypt_data)
+# trae todas las transacciones del periodo y puede ser enorme, por lo que NO se
+# persiste en bankinplay.log (sí en conciliación/asientos, donde es pequeña).
+STATEMENT_TRIGGERED_EVENTS = (
+    "lectura_intradia",
+    "lectura_cierre",
+    "lectura_tarjeta",
+)
+
 
 class BankinPlayInterface(models.AbstractModel):
     _name = "bankinplay.interface"
@@ -96,14 +105,8 @@ class BankinPlayInterface(models.AbstractModel):
 
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'response',
-            #'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
+            # response_data NO se persiste (payload pesado, no se lee en ningún flujo)
             'status': 'success',
-            #'notes': json.dumps(headers),
-            # 'response_id': data.get('responseId', ''),
-            # 'signature': data.get('signature', ''),
-            #'event_data': json.dumps(event_data),
-            #'triggered_event': str(url)
         })
 
         responseId = data.get('responseId', '')
@@ -320,28 +323,16 @@ class BankinPlayInterface(models.AbstractModel):
             
             log_entry = self.env['bankinplay.log'].create({
                 'operation_type': 'response',
-                #'request_data': json.dumps(params),
-                'response_data': decrypted_bytes.decode('utf-8'),
+                # response_data NO se persiste (payload pesado, no se lee nunca)
                 'status': 'success',
-                #'notes': json.dumps(headers),
-                # 'response_id': data.get('responseId', ''),
-                # 'signature': data.get('signature', ''),
-                #'event_data': json.dumps(event_data),
-                #'triggered_event': str(url)
             })
 
             return json.loads(decrypted_bytes.decode('utf-8'))
         else:
             log_entry = self.env['bankinplay.log'].create({
                 'operation_type': 'response',
-                #'request_data': json.dumps(params),
-                'response_data': json.dumps(data),
+                # response_data NO se persiste (payload pesado, no se lee nunca)
                 'status': 'success',
-                #'notes': json.dumps(headers),
-                # 'response_id': data.get('responseId', ''),
-                # 'signature': data.get('signature', ''),
-                #'event_data': json.dumps(event_data),
-                #'triggered_event': str(url)
             })
             return data
 
@@ -376,7 +367,6 @@ class BankinPlayInterface(models.AbstractModel):
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de transacciones enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
@@ -410,7 +400,6 @@ class BankinPlayInterface(models.AbstractModel):
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de transacciones enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
@@ -450,7 +439,6 @@ class BankinPlayInterface(models.AbstractModel):
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de transacciones enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
@@ -525,7 +513,7 @@ class BankinPlayInterface(models.AbstractModel):
             log_entry = self.env['bankinplay.log'].create({
                 'operation_type': 'response',
                 'request_data': '',
-                'response_data': data,
+                # response_data NO se persiste (payload cifrado, no se lee nunca)
                 'status': 'error',
                 'notes': 'No se encontró petición original con event_data',
                 'response_id': response_id,
@@ -540,16 +528,21 @@ class BankinPlayInterface(models.AbstractModel):
         desencrypt_data = self._desencrypt_data(
             data, access_data)
 
+        evt = triggered_event or request_id.triggered_event
+        # response_data (cifrado) NO se persiste. desencrypt_data (descifrado
+        # legible) se guarda salvo en lecturas de extracto, donde trae todas las
+        # transacciones y resulta demasiado voluminoso.
+        store_desencrypt = evt not in STATEMENT_TRIGGERED_EVENTS
+
         log_entry = self.env['bankinplay.log'].create({
             'operation_type': 'response',
             'request_data': '',
-            'response_data': data,
-            'desencrypt_data': desencrypt_data,
+            'desencrypt_data': desencrypt_data if store_desencrypt else False,
             'status': 'pending',
             'notes': '',
             'response_id': response_id,
             'signature': signature,
-            'triggered_event': triggered_event or request_id.triggered_event,
+            'triggered_event': evt,
             'company_id': request_id.company_id.id if request_id.company_id else False,
         })
 
