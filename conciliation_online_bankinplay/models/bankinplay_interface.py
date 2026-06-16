@@ -513,7 +513,6 @@ class BankinPlayInterface(models.AbstractModel):
         self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de conciliación terceros enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
@@ -626,7 +625,7 @@ class BankinPlayInterface(models.AbstractModel):
                                 _logger.error(error)
                                 self.env['bankinplay.log'].create({
                                     'operation_type': 'error',
-                                    'response_data': error,
+                                    'notes': error,
                                     'status': 'error',
                                 })
 
@@ -654,7 +653,6 @@ class BankinPlayInterface(models.AbstractModel):
         self.env['bankinplay.log'].create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
-            'response_data': json.dumps(data),
             'status': 'pending',
             'notes': 'Petición de asientos contables enviada a BankInPlay',
             'response_id': data.get('responseId', ''),
