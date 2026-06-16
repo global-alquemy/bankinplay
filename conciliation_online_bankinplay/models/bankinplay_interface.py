@@ -667,7 +667,7 @@ class BankinPlayInterface(models.AbstractModel):
                                             'debit': 0.0 if is_credit else amount,
                                             'credit': amount if is_credit else 0.0,
                                         })
-                                    statement_line.process_reconciliation_oca(counterparts, [], [])
+                                    statement_line.process_reconciliation(counterparts, [], [])
                                     self.env.cr.commit()
 
                             except Exception as e:
@@ -802,7 +802,7 @@ class BankinPlayInterface(models.AbstractModel):
                             })
 
                     if new_line_vals:
-                        statement_line.process_reconciliation_oca([], [], new_line_vals)
+                        statement_line.process_reconciliation([], [], new_line_vals)
 
                     statement_line.write({'bankinplay_conciliation': True})
                     self.env.cr.commit()
