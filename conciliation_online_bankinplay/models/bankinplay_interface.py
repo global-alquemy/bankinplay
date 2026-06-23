@@ -354,8 +354,19 @@ class BankinPlayInterface(models.AbstractModel):
 
         payable_type = self.env.ref("account.data_account_type_payable")
         receivable_type = self.env.ref("account.data_account_type_receivable")
-        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
-            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids), ('amount_residual', '!=', 0)]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id in [receivable_type, payable_type])
+        # Enviar apuntes nunca enviados con saldo pendiente, O ya enviados que han
+        # cambiado tras el envío (bankinplay_needs_update=True): cobros, vencimientos,
+        # conciliaciones, rectificativas, etc.
+        document_ids = self.env['account.move.line'].search([
+            ('company_id', '=', company_id.id),
+            ('date', '>=', start_date),
+            ("partner_id", '!=', False),
+            ('parent_state', '=', 'posted'),
+            ('journal_id', 'in', journal_ids),
+            '|',
+            '&', ('bankinplay_sent', '=', False), ('amount_residual', '!=', 0),
+            ('bankinplay_needs_update', '=', True),
+        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id in [receivable_type, payable_type])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -429,6 +440,7 @@ class BankinPlayInterface(models.AbstractModel):
                     if move_line:
                         move_line.write({
                             "bankinplay_sent": True,
+                            "bankinplay_needs_update": False,
                         })
                 
 
