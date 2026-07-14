@@ -580,6 +580,7 @@ class BankinPlayInterface(models.AbstractModel):
                                             docs_to_reconcile.append({
                                                 'move_line': move_line,
                                                 'amount': abs(importe_conciliado),
+                                                'is_reversal': importe_conciliado < 0,
                                             })
 
                                 if docs_to_reconcile:
@@ -602,6 +603,16 @@ class BankinPlayInterface(models.AbstractModel):
                                             for doc in docs_to_reconcile:
                                                 move_line = doc['move_line']
                                                 amount = doc['amount']
+                                                is_reversal = doc.get('is_reversal', False)
+                                                # Para cobros normales (is_credit=True):
+                                                #   facturas     → haber cliente
+                                                #   rectificativas/AC (is_reversal) → debe cliente
+                                                if is_credit:
+                                                    line_debit  = amount if is_reversal else 0.0
+                                                    line_credit = 0.0   if is_reversal else amount
+                                                else:
+                                                    line_debit  = 0.0   if is_reversal else amount
+                                                    line_credit = amount if is_reversal else 0.0
                                                 new_line = self.env['account.move.line'].with_context(
                                                     check_move_validity=False,
                                                     skip_sync_invoice=True,
@@ -611,8 +622,8 @@ class BankinPlayInterface(models.AbstractModel):
                                                     'account_id': move_line.account_id.id,
                                                     'partner_id': move_line.partner_id.id,
                                                     'name': statement_line.payment_ref or move_line.name,
-                                                    'debit': 0.0 if is_credit else amount,
-                                                    'credit': amount if is_credit else 0.0,
+                                                    'debit': line_debit,
+                                                    'credit': line_credit,
                                                 })
                                                 to_reconcile.append(move_line + new_line)
 
