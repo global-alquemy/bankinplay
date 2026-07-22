@@ -34,6 +34,7 @@ class BankinplayLog(models.Model):
     status = fields.Selection([
         ('success', 'Success'),
         ('error', 'Error'),
+        ('sin_datos', 'Sin datos'),
         ('pending', 'Pending'),
     ], string='Status', default='pending')
 

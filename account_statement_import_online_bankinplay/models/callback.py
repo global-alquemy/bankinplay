@@ -30,17 +30,17 @@ class CallbackController(http.Controller):
             return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
-        if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
+        if not desencrypt_data or not desencrypt_data.get('results'):
             request_id.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': log_entry.id,
             })
             log_entry.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': request_id.id,
             })
 
-            return {"status": "success", "message": "Datos recibidos correctamente"}
+            return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
 
         response = interface_model.sudo().manage_lectura_cierre_callback(
             desencrypt_data, event_data
@@ -72,17 +72,17 @@ class CallbackController(http.Controller):
             return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
-        if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
+        if not desencrypt_data or not desencrypt_data.get('results'):
             request_id.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': log_entry.id,
             })
             log_entry.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': request_id.id,
             })
 
-            return {"status": "success", "message": "Datos recibidos correctamente"}
+            return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
 
         response = interface_model.sudo().manage_lectura_intradia_callback(
             desencrypt_data, event_data
@@ -115,17 +115,17 @@ class CallbackController(http.Controller):
             return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
-        if desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0:
+        if not desencrypt_data or not desencrypt_data.get('results'):
             request_id.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': log_entry.id,
             })
             log_entry.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': request_id.id,
             })
 
-            return {"status": "success", "message": "Datos recibidos correctamente"}
+            return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
 
         response = interface_model.sudo().manage_lectura_tarjeta_callback(
             desencrypt_data, event_data

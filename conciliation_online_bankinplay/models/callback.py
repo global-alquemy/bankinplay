@@ -27,13 +27,13 @@ class ConciliationCallbackController(http.Controller):
             return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
-        if not desencrypt_data or (desencrypt_data.get('sociedades') and len(desencrypt_data.get('sociedades')) == 0):
+        if not desencrypt_data or not desencrypt_data.get('sociedades'):
             request_id.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': log_entry.id,
             })
             log_entry.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': request_id.id,
             })
             return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
@@ -68,13 +68,13 @@ class ConciliationCallbackController(http.Controller):
             return {"status": "error", "message": "No se encontró petición original"}
         event_data = json.loads(request_id.event_data)
 
-        if not desencrypt_data or (desencrypt_data.get('results') and len(desencrypt_data.get('results')) == 0):
+        if not desencrypt_data or not desencrypt_data.get('results'):
             request_id.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': log_entry.id,
             })
             log_entry.write({
-                'status': 'error',
+                'status': 'sin_datos',
                 'related_log_id': request_id.id,
             })
             return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}

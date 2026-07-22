@@ -3,7 +3,7 @@
         <field name="name">bankinplay.log.tree</field>
         <field name="model">bankinplay.log</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-danger="status == 'error'" decoration-muted="status == 'sin_datos'" decoration-success="status == 'success'">
                 <field name="date_time"/>
                 <field name="operation_type"/>
                 <field name="status"/>
@@ -44,6 +44,31 @@
                     <field name="notes"/>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_log_search" model="ir.ui.view">
+        <field name="name">bankinplay.log.search</field>
+        <field name="model">bankinplay.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="triggered_event"/>
+                <field name="response_id"/>
+                <field name="notes"/>
+                <filter name="filter_error" string="Error real" domain="[('status', '=', 'error')]"/>
+                <filter name="filter_sin_datos" string="Sin datos" domain="[('status', '=', 'sin_datos')]"/>
+                <filter name="filter_success" string="Éxito" domain="[('status', '=', 'success')]"/>
+                <filter name="filter_pending" string="Pendiente" domain="[('status', '=', 'pending')]"/>
+                <separator/>
+                <filter name="filter_request" string="Peticiones" domain="[('operation_type', '=', 'request')]"/>
+                <filter name="filter_response" string="Respuestas" domain="[('operation_type', '=', 'response')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_status" string="Estado" context="{'group_by': 'status'}"/>
+                    <filter name="group_operation_type" string="Tipo de operación" context="{'group_by': 'operation_type'}"/>
+                    <filter name="group_triggered_event" string="Evento" context="{'group_by': 'triggered_event'}"/>
+                    <filter name="group_date" string="Fecha" context="{'group_by': 'date_time:day'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
