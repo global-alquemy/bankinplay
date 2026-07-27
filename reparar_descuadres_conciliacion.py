@@ -1,59 +1,36 @@
 # -*- coding: utf-8 -*-
-# Alquemy - Diagnóstico y reparación de descuadres por conciliación de terceros (BankInPlay)
+# Alquemy - Reparación de asientos descuadrados por conciliación de terceros (BankInPlay)
 #
-# CONTEXTO
-# --------
-# Al conciliar cobros/pagos de terceros, algunos movimientos quedaban mal
-# resueltos: la factura que BankInPlay da por conciliada (importe_pendiente=0)
-# sigue ABIERTA en Odoo y/o queda residual en la cuenta transitoria.
+# QUÉ ES EL DESCUADRE
+# -------------------
+# Al conciliar un cobro con varios documentos (facturas + rectificativa/anticipo),
+# la rectificativa se contabilizaba en el lado equivocado (Haber en vez de Debe en
+# un cobro). Resultado: el asiento del extracto queda con DEBE != HABER (le falta
+# la contrapartida correcta). Ejemplo EROSKI (BNK3/2026/00118): banco 27.329,21 al
+# Debe + 4 líneas de cliente 40.744,03 al Haber => descuadre de 13.414,82
+# (= 2 x 6.707,41, la rectificativa 26R0011 mal puesta).
 #
-# CÓMO EMPAREJA EL CONECTOR (y por qué a veces no encuentra nada)
-# --------------------------------------------------------------
-# El conector localiza la línea de extracto así:
-#     search([('unique_import_id', 'like', id_movimiento)])
-#     y exige  unique_import_id == "{cuenta_bancaria}-{journal_id}-{id_movimiento}"
-# Pero la importación del extracto guarda  unique_import_id = str(transaction['id']).
-# Si ese 'id' del extracto NO contiene el 'id_movimiento' de la conciliación,
-# el conector NO concilia ese movimiento (y una búsqueda por id_movimiento no lo
-# encuentra). Por eso este script NO se apoya en id_movimiento para detectar:
-# usa 'id_documento_erp', que es DIRECTAMENTE el id de la account.move.line de la
-# factura (referencia estable de Odoo).
-#
-# QUÉ HACE
-# --------
-#   1) DIAGNÓSTICO (siempre, solo lectura): recorre los logs de conciliación con
-#      payload, CONSOLIDA los documentos de cada id_movimiento (aunque vengan en
-#      varios logs / reenvíos), resuelve cada id_documento_erp -> move.line y
-#      detecta las facturas que BankInPlay concilió pero en Odoo siguen abiertas.
-#   2) REPARACIÓN (solo si DRY_RUN=False). Para cada movimiento elige vía:
-#        a) LOCALIZABLE POR ID (unique_import_id == cuenta-diario-id_movimiento):
-#           se repara por REPLAY -> deshace la conciliación
-#           (action_undo_reconciliation) y reejecuta el conector ya corregido.
-#        b) NO localizable por id pero LOCALIZABLE POR DATOS (misma descripción e
-#           importe neto): se repara en DIRECTO -> replica la lógica corregida
-#           creando las contrapartidas con el signo correcto.
-#        c) NO localizable de ninguna forma: se informa y NO se toca.
-#      Ambas vías van envueltas en _check_balanced: si el asiento no cuadra,
-#      se revierte y se informa. NUNCA deja un asiento descuadrado.
-#      NOTA: con FORZAR_DIRECTO=True (por defecto) TODOS los localizables se
-#      reparan en DIRECTO, sin llamar al conector -> no hace falta tenerlo
-#      desplegado con el fix. Ponlo a False solo si el conector YA está desplegado
-#      y prefieres que el propio conector rehaga la conciliación (replay).
-#   3) ASIENTOS DESCUADRADOS + COBERTURA (siempre, solo lectura): al final da la
-#      foto CONTABLE (independiente de logs) de los asientos descuadrados = moves
-#      de extracto BankInPlay cuyo DEBE != HABER (el conector los dejó así al
-#      escribir con check_move_validity=False). Muestra el descuadre por línea
-#      (debe-haber) y el TOTAL, y cruza con los logs: cuántos son reparables ya y
-#      cuántos necesitan redescargar() (payload purgado).
+# QUÉ HACE ESTE SCRIPT
+# --------------------
+#   1) DETECTA (contable, en TODOS los diarios y TODAS las empresas): asientos de
+#      extracto cuyo DEBE != HABER. No depende de bankinplay_journal_ids ni de
+#      is_reconciled (por eso antes salía 0: se limitaba a esos diarios).
+#   2) ENLAZA cada descuadre con su payload de BankInPlay: del unique_import_id de
+#      la línea saca el id_movimiento (parte final) y busca en los logs los
+#      documentos de ese movimiento (facturas + rectificativa, con importe y signo).
+#   3) REPARA (vía directa, autocontenida, NO depende del conector desplegado):
+#      deshace el asiento (action_undo_reconciliation) y lo rehace con el signo
+#      correcto (rectificativa al lado contrario). Va envuelto en _check_balanced:
+#      si no cuadra, revierte y avisa. NUNCA deja un asiento descuadrado.
+#   4) Los descuadres SIN payload en logs (purgado >90 días) se listan aparte con
+#      la sugerencia de redescargar() para regenerarlos.
 #
 # CÓMO EJECUTAR
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
-#   Recomendado 1ª vez:  DRY_RUN=True  y  BUSCAR_TEXTO='EROSKI'  (o el movimiento
-#   concreto que queráis revisar) para ver el diagnóstico antes de tocar nada.
-#   Para acotar a un periodo/cierre:  FECHA_DESDE='2026-06-01'  FECHA_HASTA='2026-06-30'
-#   (por fecha del movimiento bancario).
+#   1ª vez: DRY_RUN=True (solo informa). Acotables: FECHA_DESDE/HASTA (periodo),
+#   BUSCAR_TEXTO='EROSKI', ONLY_MOVEMENT_IDS, COMPANY_IDS.
 #
-# ⚠️ Antes de reparar en real: copia de seguridad + prueba en staging.
+# Antes de reparar en real: copia de seguridad + prueba en staging.
 
 import json
 import logging
@@ -65,34 +42,18 @@ _logger = logging.getLogger("bankinplay.reparacion")
 # ==========================================================================
 DRY_RUN = True                 # True = solo diagnostica. False = repara.
 
-# Vía de reparación:
-#   True  = SIEMPRE reparación directa (lógica corregida dentro del script). No
-#           depende de que el conector esté actualizado. Recomendado por defecto.
-#   False = usa replay (reejecuta el conector) para los localizables por id, y
-#           directa para el resto. Requiere el conector ya desplegado con el fix.
-FORZAR_DIRECTO = True
-
 TRIGGERED_EVENT = 'exportacion_conciliacion_terceros'
 
-# Filtros opcionales (vacío = sin filtro):
-COMPANY_IDS = []               # p.ej. [1]
+COMPANY_IDS = []               # p.ej. [1]. VACÍO = TODAS las empresas (recomendado).
+                               # (El detector recorre TODOS los diarios y TODAS las
+                               #  empresas; no depende de bankinplay_journal_ids.)
+FECHA_DESDE = False            # 'YYYY-MM-DD' por fecha del asiento (periodo contable)
+FECHA_HASTA = False            # 'YYYY-MM-DD'
+ONLY_MOVEMENT_IDS = []         # p.ej. ['471656237']
+BUSCAR_TEXTO = ''              # subcadena de payment_ref (p.ej. 'EROSKI')
 
-# Acotar por FECHA DEL MOVIMIENTO bancario = periodo contable (lo habitual para
-# un cierre). Formato 'YYYY-MM-DD'. Se usa la fecha de la línea de extracto y, si
-# no hay línea, la fecha de operación del payload.
-FECHA_DESDE = False            # p.ej. '2026-06-01'
-FECHA_HASTA = False            # p.ej. '2026-06-30'
-
-ONLY_MOVEMENT_IDS = []         # p.ej. ['471752127']
-BUSCAR_TEXTO = ''              # subcadena de descripcion_movimiento (p.ej. 'EROSKI')
-
-# Prefiltro TÉCNICO opcional por fecha de RECEPCIÓN del log (no es el periodo
-# contable; sólo reduce los logs a parsear). Formato 'YYYY-MM-DD HH:MM:SS'.
-LOG_DATE_FROM = False
-LOG_DATE_TO = False
-
-EPS = 0.005                    # tolerancia de residual (moneda compañía)
-MAX_DETALLE = 500              # límite de líneas de detalle a imprimir
+EPS = 0.005                    # tolerancia de descuadre (moneda compañía)
+MAX_DETALLE = 500              # máximo de líneas de detalle a imprimir
 # ==========================================================================
 
 
@@ -111,115 +72,13 @@ def _move_line(env, id_documento_erp):
         mlid = int(id_documento_erp)
     except (TypeError, ValueError):
         return env['account.move.line'].browse()
-    return env['account.move.line'].browse(mlid).exists()
-
-
-def _iter_movimientos(desencrypt_data):
-    """Recorre TODAS las sociedades del payload y agrupa documentos por
-    id_movimiento. Devuelve lista de (sociedad, id_movimiento, docs)."""
-    out = []
-    for soc in (desencrypt_data.get('sociedades') or []):
-        por_mov = {}
-        for doc in (soc.get('documentos') or []):
-            idm = str(doc.get('id_movimiento') or '')
-            if not idm:
-                continue
-            por_mov.setdefault(idm, []).append(doc)
-        for idm, docs in por_mov.items():
-            out.append((soc, idm, docs))
-    return out
-
-
-def _statement_line_por_movimiento(env, id_movimiento):
-    """Busca como el conector: unique_import_id LIKE id_movimiento (substring)."""
-    return env['account.bank.statement.line'].search(
-        [('unique_import_id', 'like', id_movimiento)], limit=1)
-
-
-def _unique_import_esperado(docs, st_line):
-    """El unique_import_id que el conector EXIGE (== para conciliar)."""
-    if not st_line:
-        return ''
-    cuenta = (docs[0].get('cuenta_bancaria') or '') if docs else ''
-    return "%s-%s-%s" % (cuenta, st_line.journal_id.id,
-                         str(docs[0].get('id_movimiento')) if docs else '')
-
-
-def _suspense_residual(st_line):
-    if not st_line:
-        return 0.0
-    _liq, suspense_lines, _other = st_line._seek_for_lines()
-    return sum(suspense_lines.mapped('amount_residual'))
-
-
-def _docs_abiertos(env, docs):
-    """move.line de los documentos que BankInPlay concilió pero siguen abiertos."""
-    abiertos = []
-    for doc in docs:
-        ml = _move_line(env, doc.get('id_documento_erp'))
-        if not ml:
-            continue
-        if ml.parent_state != 'posted':
-            continue
-        if ml.account_id.account_type not in ('asset_receivable', 'liability_payable'):
-            continue
-        if abs(ml.amount_residual) > EPS:
-            abiertos.append((doc, ml))
-    return abiertos
-
-
-def _coincide_texto(docs):
-    if not BUSCAR_TEXTO:
-        return True
-    t = BUSCAR_TEXTO.lower()
-    return any(t in (d.get('descripcion_movimiento') or '').lower() for d in docs)
-
-
-def _fecha_movimiento(st_line, st_datos, docs):
-    """Fecha del movimiento como 'YYYY-MM-DD': la de la línea de extracto si se
-    localiza (verdad contable); si no, la fecha de operación del payload."""
-    sl = st_line or st_datos
-    if sl and sl.date:
-        return str(sl.date)[:10]
-    if docs:
-        f = (docs[0].get('fecha_operacion_movimiento')
-             or docs[0].get('fecha_confirmacion') or '')
-        return f[:10]
-    return ''
-
-
-def _fuera_de_periodo(fecha):
-    """True si `fecha` ('YYYY-MM-DD') queda fuera de [FECHA_DESDE, FECHA_HASTA].
-    Si no se puede determinar la fecha, NO se descarta (se incluye por seguridad)."""
-    if not fecha:
-        return False
-    if FECHA_DESDE and fecha < FECHA_DESDE:
-        return True
-    if FECHA_HASTA and fecha > FECHA_HASTA:
-        return True
-    return False
-
-
-def _payload_reducido(sociedad, docs):
-    soc = dict(sociedad)
-    soc['documentos'] = docs
-    return {'sociedades': [soc]}
-
-
-# --------------------------------------------------------------------------
-# REPARACIÓN DIRECTA (para movimientos NO emparejables por id_movimiento)
-# Empareja la línea de extracto por descripción + importe, y concilia
-# replicando la lógica corregida del conector, autovalidando el cuadre.
-# --------------------------------------------------------------------------
-def _iban(x):
-    return (x or '').replace(' ', '').upper()
+    return env['account.move.line'].sudo().browse(mlid).exists()
 
 
 def _es_reversal(doc, st_amount):
-    """True si el documento es una reversión (rectificativa/anticipo) respecto al
-    signo del movimiento. Robusto a las dos codificaciones posibles:
-      - importe_conciliado negativo, o
-      - signo_movimiento contrario al del movimiento bancario."""
+    """True si el documento es reversión (rectificativa/anticipo) respecto al signo
+    del movimiento. Robusto a las dos codificaciones: importe_conciliado < 0, o
+    signo_movimiento contrario al del cobro/pago."""
     imp = _f(doc.get('importe_conciliado'))
     if imp < 0:
         return True
@@ -228,43 +87,104 @@ def _es_reversal(doc, st_amount):
     return bool(signo) and signo != mov
 
 
-def _buscar_statement_line_por_datos(env, docs):
-    """Localiza la línea de extracto SIN usar id_movimiento: por descripción
-    (payment_ref) + importe, restringido al diario del IBAN. Devuelve la línea
-    (o vacío) y un texto explicativo."""
-    Line = env['account.bank.statement.line']
-    if not docs:
-        return Line.browse(), 'sin docs'
-    desc = docs[0].get('descripcion_movimiento') or ''
-    iban = _iban(docs[0].get('cuenta_bancaria'))
+def _mapa_payloads(env):
+    """Construye {id_movimiento: {sociedad, docs, event_data}} a partir de los logs
+    de conciliación con payload. Consolida por id_movimiento el payload más completo
+    (más documentos; a igualdad, el más reciente), aunque venga en varios logs."""
+    dom = [
+        ('triggered_event', '=', TRIGGERED_EVENT),
+        ('operation_type', '=', 'response'),
+        ('desencrypt_data', '!=', False),
+    ]
+    if COMPANY_IDS:
+        dom.append(('company_id', 'in', COMPANY_IDS))
+    logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
 
-    journals = env['account.journal'].search([('type', '=', 'bank')]).filtered(
-        lambda j: j.bank_account_id and _iban(j.bank_account_id.acc_number) == iban)
-    base = [('journal_id', 'in', journals.ids)] if journals else []
+    mejor = {}
+    for log in logs:
+        try:
+            data = json.loads(log.desencrypt_data)
+        except (TypeError, ValueError):
+            continue
+        req_log = log.related_log_id or log
+        if not req_log.event_data:
+            continue
+        try:
+            event_data = json.loads(req_log.event_data)
+        except (TypeError, ValueError):
+            continue
+        for soc in (data.get('sociedades') or []):
+            por_mov = {}
+            for doc in (soc.get('documentos') or []):
+                idm = str(doc.get('id_movimiento') or '')
+                if idm:
+                    por_mov.setdefault(idm, []).append(doc)
+            for idm, docs in por_mov.items():
+                prev = mejor.get(idm)
+                if prev is None or len(docs) > len(prev['docs']) or (
+                        len(docs) == len(prev['docs'])
+                        and log.date_time > prev['date_time']):
+                    mejor[idm] = {'sociedad': soc, 'docs': docs,
+                                  'event_data': event_data, 'date_time': log.date_time}
+    return mejor
 
-    cand = Line.search(base + [('payment_ref', '=', desc)]) if desc else Line.browse()
-    if not cand and desc:
-        cand = Line.search(base + [('payment_ref', 'ilike', desc[:60])])
-    if not cand:
-        return Line.browse(), 'no encontrada por descripción'
 
-    # importe neto firmado del movimiento (según reversión)
-    def neto(st_amount):
-        return sum(abs(_f(d.get('importe_conciliado'))) *
-                   (-1 if _es_reversal(d, st_amount) else 1) for d in docs)
-    coincide = cand.filtered(lambda l: abs(l.amount - neto(l.amount)) <= EPS)
-    if not coincide:
-        return Line.browse(), ('descripción OK pero importe no cuadra (candidatas: %s)'
-                               % cand.ids[:5])
-    no_rec = coincide.filtered(lambda l: not l.is_reconciled)
-    elegido = (no_rec or coincide)[:1]
-    return elegido, 'emparejada por descripción+importe'
+def _buscar_descuadres(env):
+    """Asientos de extracto (TODOS los diarios) con DEBE != HABER.
+    Devuelve [(statement_line, descuadre_importe)]."""
+    sql = """
+        SELECT am.statement_line_id,
+               COALESCE(SUM(aml.debit), 0)  AS d,
+               COALESCE(SUM(aml.credit), 0) AS c
+        FROM account_move_line aml
+        JOIN account_move am ON am.id = aml.move_id
+        WHERE am.statement_line_id IS NOT NULL
+    """
+    params = []
+    if COMPANY_IDS:
+        sql += " AND am.company_id IN %s"
+        params.append(tuple(COMPANY_IDS))
+    if FECHA_DESDE:
+        sql += " AND am.date >= %s"
+        params.append(FECHA_DESDE)
+    if FECHA_HASTA:
+        sql += " AND am.date <= %s"
+        params.append(FECHA_HASTA)
+    sql += """
+        GROUP BY am.statement_line_id
+        HAVING ABS(COALESCE(SUM(aml.debit), 0) - COALESCE(SUM(aml.credit), 0)) > %s
+        ORDER BY am.statement_line_id
+    """
+    params.append(EPS)
+    env.cr.execute(sql, params)
+    rows = env.cr.fetchall()
+
+    Line = env['account.bank.statement.line'].sudo()
+    txt = (BUSCAR_TEXTO or '').lower()
+    out = []
+    for slid, d, c in rows:
+        sl = Line.browse(slid)
+        idm = (sl.unique_import_id or '').split('-')[-1]
+        if ONLY_MOVEMENT_IDS and idm not in ONLY_MOVEMENT_IDS:
+            continue
+        if txt and txt not in (sl.payment_ref or '').lower():
+            continue
+        out.append((sl, round(d - c, 2)))
+    return out
+
+
+def _descuadre(st_line):
+    """Descuadre actual del asiento = Debe - Haber (0 = cuadrado)."""
+    move = st_line.move_id
+    return round(sum(move.line_ids.mapped('debit'))
+                 - sum(move.line_ids.mapped('credit')), 2)
 
 
 def _reconciliar_directo(env, st_line, docs):
-    """Concilia el movimiento sobre `st_line` replicando la lógica corregida del
-    conector, sin depender de id_movimiento. Autovalida con _check_balanced:
-    si no cuadra, revierte y devuelve el error. Devuelve (ok, mensaje)."""
+    """Rehace la conciliación sobre `st_line` con el signo correcto, sin depender
+    del conector. Autovalida con _check_balanced: si no cuadra, revierte y devuelve
+    el error. Devuelve (ok, mensaje)."""
+    st_line = st_line.sudo()
     is_credit = st_line.amount > 0
     docs_rec = []
     for doc in docs:
@@ -276,23 +196,20 @@ def _reconciliar_directo(env, st_line, docs):
             continue
         docs_rec.append((ml, abs(importe), _es_reversal(doc, st_line.amount)))
     if not docs_rec:
-        return False, 'sin documentos contables válidos'
+        return False, 'sin documentos contables válidos en el payload'
 
     neto = sum(a * (-1 if rev else 1) for _ml, a, rev in docs_rec)
     if abs(st_line.amount - neto) > EPS:
         return False, ('neto documentos %.2f != importe extracto %.2f (revisar signo)'
                        % (neto, st_line.amount))
 
-    # Normalizar la línea a su estado limpio (banco + transitoria) antes de rehacer.
-    # Deshacer si está conciliada O si el asiento está descuadrado (debe != haber),
-    # que es justamente el caso que reparamos: así partimos siempre de base cuadrada.
+    # Partir de base limpia (banco + transitoria) deshaciendo lo que haya.
     move = st_line.move_id
-    desbalance = sum(move.line_ids.mapped('debit')) - sum(move.line_ids.mapped('credit'))
-    if st_line.is_reconciled or abs(desbalance) > EPS:
+    if st_line.is_reconciled or abs(_descuadre(st_line)) > EPS:
         st_line.action_undo_reconciliation()
     _liq, suspense_lines, other_lines = st_line._seek_for_lines()
     if not suspense_lines:
-        return False, 'sin línea suspense tras preparar'
+        return False, 'sin línea transitoria tras preparar'
 
     container = {"records": move, "self": move}
     to_reconcile = []
@@ -308,7 +225,7 @@ def _reconciliar_directo(env, st_line, docs):
                 else:
                     debit = 0.0 if is_reversal else amount
                     credit = amount if is_reversal else 0.0
-                new_line = env['account.move.line'].with_context(
+                new_line = move.env['account.move.line'].with_context(
                     check_move_validity=False, skip_sync_invoice=True,
                     skip_invoice_sync=True).create({
                         'move_id': move.id,
@@ -322,301 +239,82 @@ def _reconciliar_directo(env, st_line, docs):
         for pair in to_reconcile:
             pair.reconcile()
         env.cr.commit()
-        return True, 'ok (directo)'
+        return True, 'ok'
     except Exception as e:
         env.cr.rollback()
         return False, str(e)
 
 
-def _control_cobertura(env, candidatos):
-    """READ-ONLY. Foto CONTABLE de asientos DESCUADRADOS de diarios BankInPlay:
-    asientos de extracto cuyo DEBE != HABER (el conector los dejó descuadrados al
-    escribir con check_move_validity=False). Independiente de los logs. Cruza con
-    los logs para decir cuántos son reparables ya y cuántos necesitan redescargar().
-    Respeta FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
-    """
-    companies = env['res.company'].sudo().search([('bankinplay_enabled', '=', True)])
-    if COMPANY_IDS:
-        companies = companies.filtered(lambda c: c.id in COMPANY_IDS)
-    journal_ids = companies.mapped('bankinplay_journal_ids').ids
+def reparar(env):
+    print("=" * 92)
+    print("ASIENTOS DESCUADRADOS (debe != haber) - TODOS los diarios | MODO: %s"
+          % ('DIAGNÓSTICO (dry-run)' if DRY_RUN else '*** REPARACIÓN REAL ***'))
+    print("=" * 92)
 
-    print("\n" + "=" * 90)
-    print("ASIENTOS DESCUADRADOS (debe != haber) + COBERTURA (logs)")
-    print("=" * 90)
-    if not journal_ids:
-        print("  No hay diarios BankInPlay configurados; se omite.")
-        return
+    mejor = _mapa_payloads(env)
+    descuadres = _buscar_descuadres(env)
 
-    # Asientos de extracto de esos diarios cuyo total DEBE != total HABER.
-    sql = """
-        SELECT am.statement_line_id,
-               COALESCE(SUM(aml.debit), 0)  AS d,
-               COALESCE(SUM(aml.credit), 0) AS c
-        FROM account_move_line aml
-        JOIN account_move am ON am.id = aml.move_id
-        WHERE am.journal_id IN %s
-          AND am.statement_line_id IS NOT NULL
-    """
-    params = [tuple(journal_ids)]
-    if FECHA_DESDE:
-        sql += " AND am.date >= %s"
-        params.append(FECHA_DESDE)
-    if FECHA_HASTA:
-        sql += " AND am.date <= %s"
-        params.append(FECHA_HASTA)
-    sql += """
-        GROUP BY am.statement_line_id
-        HAVING ABS(COALESCE(SUM(aml.debit), 0) - COALESCE(SUM(aml.credit), 0)) > %s
-    """
-    params.append(EPS)
-    env.cr.execute(sql, params)
-    rows = env.cr.fetchall()   # [(statement_line_id, debe, haber), ...]
+    total = sum(abs(d) for _sl, d in descuadres)
+    con, sin = [], []
+    for sl, desc in descuadres:
+        idm = (sl.unique_import_id or '').split('-')[-1]
+        m = mejor.get(idm)
+        (con if m else sin).append((sl, desc, idm, m))
 
-    cubiertas = set()
-    for c in candidatos:
-        sl = c.get('st_datos') or c.get('st_line')
-        if sl:
-            cubiertas.add(sl.id)
-
-    Line = env['account.bank.statement.line']
-    total, n_cub, detalle, por_cia_sincov = 0.0, 0, [], {}
-    for slid, d, c in rows:
-        sl = Line.browse(slid)
-        desc = round(d - c, 2)          # descuadre = debe - haber
-        total += abs(desc)
-        cov = slid in cubiertas
-        n_cub += 1 if cov else 0
-        detalle.append((sl, desc, cov))
-        if not cov:
-            por_cia_sincov.setdefault(sl.company_id, []).append(sl.date)
-
-    print("  Asientos descuadrados (debe != haber) . . . . . . . : %d" % len(rows))
+    print("  Asientos descuadrados detectados . . . . . . . . . : %d" % len(descuadres))
     print("  DESCUADRE TOTAL (suma |debe - haber|) . . . . . . . : %.2f" % total)
-    print("  Reparables ya desde logs . . . . . . . . . . . . . .: %d" % n_cub)
-    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % (len(rows) - n_cub))
-    if not rows:
-        print("  No hay asientos descuadrados en el criterio dado. OK")
+    print("  Con payload en logs (reparables) . . . . . . . . . : %d" % len(con))
+    print("  SIN payload (purgado -> redescargar) . . . . . . . : %d" % len(sin))
+    if not descuadres:
+        print("  No hay asientos descuadrados con los filtros dados.")
         return
-
-    print("  --- Detalle (DESCUADRE = debe - haber) ---")
-    for i, (sl, desc, cov) in enumerate(detalle):
-        if i < MAX_DETALLE:
-            print("    line %s | %s | %s | importe %.2f | DESCUADRE %.2f | %s"
-                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, desc,
-                     'reparable' if cov else 'SIN cobertura'))
-    if por_cia_sincov:
-        print("  Re-descarga sugerida para los SIN cobertura:")
-        for cia, fechas in por_cia_sincov.items():
-            print("    redescargar(env, %s, '%s', '%s')   # %s"
-                  % (cia.id, str(min(fechas)), str(max(fechas)), cia.name))
-
-
-def analizar(env):
-    dom = [
-        ('triggered_event', '=', TRIGGERED_EVENT),
-        ('operation_type', '=', 'response'),
-        ('desencrypt_data', '!=', False),
-    ]
-    if COMPANY_IDS:
-        dom.append(('company_id', 'in', COMPANY_IDS))
-    if LOG_DATE_FROM:
-        dom.append(('date_time', '>=', LOG_DATE_FROM))
-    if LOG_DATE_TO:
-        dom.append(('date_time', '<=', LOG_DATE_TO))
-    logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
-
-    print("=" * 90)
-    print("DESCUADRES CONCILIACIÓN TERCEROS | MODO: %s | VÍA: %s"
-          % ('DIAGNÓSTICO (dry-run)' if DRY_RUN else '*** REPARACIÓN REAL ***',
-             'SIEMPRE DIRECTA' if FORZAR_DIRECTO else 'replay + directa'))
-    print("Logs de conciliación con payload: %d" % len(logs))
-    print("=" * 90)
-
-    # 1) CONSOLIDACIÓN: para cada id_movimiento nos quedamos con el payload MÁS
-    # COMPLETO (más documentos; a igualdad, el log más reciente). Así, si los
-    # documentos de un movimiento vinieran repartidos en varios logs o reenviados,
-    # trabajamos con el conjunto completo y agrupamos bien los N documentos.
-    mejor = {}          # id_movimiento -> {sociedad, docs, event_data, log}
-    multiples = set()   # id_movimiento visto en más de un log
-    for log in logs:
-        try:
-            desencrypt_data = json.loads(log.desencrypt_data)
-        except (TypeError, ValueError):
-            continue
-        req_log = log.related_log_id or log
-        if not req_log.event_data:
-            continue
-        try:
-            event_data = json.loads(req_log.event_data)
-        except (TypeError, ValueError):
-            continue
-
-        for sociedad, id_movimiento, docs in _iter_movimientos(desencrypt_data):
-            if ONLY_MOVEMENT_IDS and id_movimiento not in ONLY_MOVEMENT_IDS:
-                continue
-            if not _coincide_texto(docs):
-                continue
-            prev = mejor.get(id_movimiento)
-            if prev is not None:
-                multiples.add(id_movimiento)
-            if (prev is None
-                    or len(docs) > len(prev['docs'])
-                    or (len(docs) == len(prev['docs'])
-                        and log.date_time > prev['log'].date_time)):
-                mejor[id_movimiento] = {
-                    'sociedad': sociedad, 'docs': docs,
-                    'event_data': event_data, 'log': log,
-                }
-
-    # 2) CANDIDATOS: movimientos con alguna factura conciliada-pero-abierta.
-    candidatos = []
-    for id_movimiento, m in mejor.items():
-        abiertos = _docs_abiertos(env, m['docs'])
-        if not abiertos:
-            continue  # todos los documentos están saldados -> nada que reparar
-
-        st_line = _statement_line_por_movimiento(env, id_movimiento)
-        esperado = _unique_import_esperado(m['docs'], st_line)
-        emparejable = bool(st_line) and st_line.unique_import_id == esperado
-        # Vía alternativa (por datos) para los NO localizables por id_movimiento.
-        if emparejable:
-            st_datos, motivo_datos = st_line, 'no aplica (localizable por id)'
-        else:
-            st_datos, motivo_datos = _buscar_statement_line_por_datos(env, m['docs'])
-
-        fecha_mov = _fecha_movimiento(st_line, st_datos, m['docs'])
-        if _fuera_de_periodo(fecha_mov):
-            continue  # fuera del periodo contable solicitado
-
-        candidatos.append({
-            'log': m['log'], 'sociedad': m['sociedad'], 'event_data': m['event_data'],
-            'id_movimiento': id_movimiento, 'docs': m['docs'], 'abiertos': abiertos,
-            'st_line': st_line, 'esperado': esperado, 'emparejable': emparejable,
-            'st_datos': st_datos, 'motivo_datos': motivo_datos,
-            'multiple': id_movimiento in multiples, 'fecha_mov': fecha_mov,
-        })
-
-    print("\nMovimientos con facturas abiertas (candidatos): %d\n" % len(candidatos))
-    if not candidatos:
-        print("No se detectan facturas conciliadas-pero-abiertas con el payload disponible.")
-        print("Si esperabais casos aquí, revisad BUSCAR_TEXTO / fechas, o puede que el")
-        print("payload del log esté purgado (>90 días) -> ver redescargar().")
-        _control_cobertura(env, [])
-        return
-
-    print("LEYENDA:")
-    print("  - 'localizable por id'    = la línea de extracto tiene el unique_import_id")
-    print("                              que espera el conector (cuenta-diario-id_movimiento).")
-    print("                              Se repara por REPLAY (reejecutar el conector corregido).")
-    print("  - 'localizable por datos' = no casa por id, pero se encuentra la línea por")
-    print("                              descripción + importe. Se repara en DIRECTO.")
-    print("  - 'no localizable'        = no se encuentra la línea; revisión manual.\n")
-
-    n_por_id = sum(1 for c in candidatos if c['emparejable'])
-    n_por_datos = sum(1 for c in candidatos if not c['emparejable'] and c['st_datos'])
-    n_manual = len(candidatos) - n_por_id - n_por_datos
-    via_id = 'vía directa' if FORZAR_DIRECTO else 'vía replay'
-    print("  Localizables por id (%s) : %d" % (via_id, n_por_id))
-    print("  Localizables por datos (vía directa): %d" % n_por_datos)
-    print("  No localizables (revisión manual) . : %d" % n_manual)
 
     reparados, fallidos = 0, 0
     detalle = 0
-    for c in candidatos:
-        st_line = c['st_line']
+    for sl, desc, idm, m in con + sin:
         detalle += 1
         if detalle <= MAX_DETALLE:
-            print("-" * 90)
-            desc = (c['abiertos'][0][0].get('descripcion_movimiento') or '')[:65]
-            print("Mov %s | fecha %s | docs: %d | abiertas: %d%s | %s"
-                  % (c['id_movimiento'], c.get('fecha_mov') or '?', len(c['docs']),
-                     len(c['abiertos']),
-                     ' | (docs en varios logs)' if c.get('multiple') else '', desc))
-            for doc, ml in c['abiertos']:
-                print("    doc erp=%s (%s) tipo=%s signo=%s importe=%.2f "
-                      "conciliado=%.2f | move.line %s residual=%.2f"
-                      % (doc.get('id_documento_erp'), ml.move_id.name,
-                         doc.get('tipo_documento_codigo'), doc.get('signo_movimiento'),
-                         _f(doc.get('importe')), _f(doc.get('importe_conciliado')),
-                         ml.id, ml.amount_residual))
-            if st_line:
-                print("    extracto (por id): line %s | unique_import_id ACTUAL='%s'"
-                      % (st_line.id, st_line.unique_import_id))
-                print("              ESPERADO='%s' | localizable_por_id=%s | transitoria=%.2f"
-                      % (c['esperado'], c['emparejable'], _suspense_residual(st_line)))
-            else:
-                print("    extracto (por id): NO localizado por id_movimiento (%s)"
-                      % c['id_movimiento'])
-            if not c['emparejable']:
-                sd = c['st_datos']
-                print("    extracto (por datos): %s%s"
-                      % (('line %s (uii=%s) ' % (sd.id, sd.unique_import_id)) if sd else '',
-                         c['motivo_datos']))
+            print("-" * 92)
+            print("Mov %s | %s | %s | importe %.2f | DESCUADRE %.2f | %s"
+                  % (idm, sl.date, sl.journal_id.code, sl.amount, desc,
+                     'CON payload' if m else 'SIN payload'))
+            print("    %s" % (sl.payment_ref or '')[:88])
 
         if DRY_RUN:
             continue
-
-        # Elección de vía de reparación:
-        #   - FORZAR_DIRECTO=True  -> siempre vía directa (no depende del conector).
-        #   - FORZAR_DIRECTO=False -> replay si es localizable por id; directa si no.
-        usar_directo = FORZAR_DIRECTO or not c['emparejable']
-
-        if usar_directo and c['st_datos']:
-            ok, msg = _reconciliar_directo(env, c['st_datos'], c['docs'])
-            if ok:
-                # Verificación post-reparación: transitoria a 0 y facturas cerradas.
-                c['st_datos'].invalidate_recordset()
-                residual = _suspense_residual(c['st_datos'])
-                abiertos2 = _docs_abiertos(env, c['docs'])
-                ok = abs(residual) <= EPS and not abiertos2
-                msg = "%s | residual=%.2f abiertas=%d" % (msg, residual, len(abiertos2))
-            print("    -> %s (directo) %s" % ('OK' if ok else 'REVISAR', msg))
-            reparados += 1 if ok else 0
-            fallidos += 0 if ok else 1
-        elif c['emparejable']:
-            try:
-                st_line.action_undo_reconciliation()
-                env['bankinplay.interface'].sudo().manage_conciliacion_terceros_callback(
-                    _payload_reducido(c['sociedad'], c['docs']), c['event_data'])
-                st_line.invalidate_recordset()
-                residual = _suspense_residual(st_line)
-                abiertos2 = _docs_abiertos(env, c['docs'])
-                ok = st_line.is_reconciled and abs(residual) <= EPS and not abiertos2
-                print("    -> %s (replay) residual=%.2f abiertas=%d"
-                      % ('OK' if ok else 'REVISAR', residual, len(abiertos2)))
-                reparados += 1 if ok else 0
-                fallidos += 0 if ok else 1
-            except Exception as e:
-                env.cr.rollback()
-                print("    -> ERROR (replay): %s" % e)
-                _logger.exception("Fallo replay movimiento %s", c['id_movimiento'])
-                fallidos += 1
-        else:
-            print("    -> SIN REPARAR: no localizable (revisión manual).")
+        if not m:
+            print("    -> SIN REPARAR: falta payload. Usa redescargar() del periodo.")
             fallidos += 1
+            continue
+        ok, msg = _reconciliar_directo(env, sl, m['docs'])
+        if ok:
+            desc2 = _descuadre(sl)
+            ok = abs(desc2) <= EPS
+            msg = "%s | descuadre tras reparar=%.2f" % (msg, desc2)
+        print("    -> %s %s" % ('OK' if ok else 'REVISAR', msg))
+        reparados += 1 if ok else 0
+        fallidos += 0 if ok else 1
 
-    print("=" * 90)
+    print("=" * 92)
     if DRY_RUN:
-        print("DIAGNÓSTICO terminado. Revisa el listado.")
-        print("Para reparar (replay + directo) pon DRY_RUN=False.")
-        if n_manual:
-            print("Quedan %d movimientos no localizables ni por id ni por datos: los"
-                  " revisamos juntos (posible conciliación manual)." % n_manual)
+        print("DIAGNÓSTICO terminado. Pon DRY_RUN=False para reparar los 'CON payload'.")
     else:
         print("HECHO. Reparados: %d | Para revisar/fallidos: %d" % (reparados, fallidos))
-        if n_manual:
-            print("Quedan %d movimientos no localizables sin tocar (revisión manual)."
-                  % n_manual)
-    print("=" * 90)
-
-    _control_cobertura(env, candidatos)
+    if sin:
+        por_cia = {}
+        for sl, desc, idm, m in sin:
+            por_cia.setdefault(sl.company_id, []).append(sl.date)
+        print("Re-descarga sugerida para los SIN payload:")
+        for cia, fechas in por_cia.items():
+            print("    redescargar(env, %s, '%s', '%s')   # %s"
+                  % (cia.id, str(min(fechas)), str(max(fechas)), cia.name))
+    print("=" * 92)
 
 
 def redescargar(env, company_id, fecha_desde, fecha_hasta=None):
-    """OPT-IN. Vuelve a pedir a BankInPlay la conciliación de terceros de un RANGO
-    acotado [fecha_desde, fecha_hasta] (str 'YYYY-MM-DD' o date), para regenerar
-    el log/payload de un periodo cuyo log se purgó SIN bajar todo el histórico.
-    Requiere conciliation_online_bankinplay >= 16.1.5 (soporte fecha_hasta). Uso:
+    """OPT-IN. Vuelve a pedir a BankInPlay la conciliación de terceros de un rango
+    [fecha_desde, fecha_hasta] ('YYYY-MM-DD' o date) para regenerar el payload de un
+    periodo cuyo log se purgó. Requiere conciliation_online_bankinplay >= 16.1.5.
         redescargar(env, <company_id>, '2026-06-01', '2026-06-30')
     """
     company = env['res.company'].sudo().browse(company_id).exists()
@@ -635,7 +333,7 @@ def redescargar(env, company_id, fecha_desde, fecha_hasta=None):
     company.with_context(company_id=company.id).with_delay(
         max_retries=0).bankinplay_import_documents(fecha_desde, fecha_hasta)
     env.cr.commit()
-    print("  Petición encolada. Espera el callback, revisa logs y re-ejecuta analizar().")
+    print("  Petición encolada. Espera el callback, revisa logs y re-ejecuta reparar().")
 
 
 # En `odoo-bin shell` la variable `env` ya existe.
@@ -644,4 +342,4 @@ try:
 except NameError:
     raise SystemExit("Ejecuta este script dentro de `odoo-bin shell` (no hay 'env').")
 
-analizar(env)
+reparar(env)
