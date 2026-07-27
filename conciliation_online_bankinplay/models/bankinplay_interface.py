@@ -484,8 +484,22 @@ class BankinPlayInterface(models.AbstractModel):
 
     # CONCILIACIÓN
 
-    def _import_conciliate_documents(self, access_data):
-        """Envía petición asíncrona de conciliación de terceros (callback)."""
+    @staticmethod
+    def _bankinplay_fmt_fecha(f):
+        """Normaliza una fecha a 'DD/MM/YYYY' (admite date/datetime o 'YYYY-MM-DD')."""
+        if not f:
+            return None
+        if isinstance(f, str):
+            f = datetime.strptime(f[:10], "%Y-%m-%d")
+        return f.strftime("%d/%m/%Y")
+
+    def _import_conciliate_documents(self, access_data, fecha_desde=None, fecha_hasta=None):
+        """Envía petición asíncrona de conciliación de terceros (callback).
+
+        Si se indican `fecha_desde`/`fecha_hasta` (date o 'YYYY-MM-DD'), se acota
+        la petición a ese rango (evita descargar todo el histórico). Si no, se usa
+        el comportamiento habitual: desde last_syncdate-2d (o start_date).
+        """
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = access_data.get('company_id', False)
 
@@ -495,12 +509,17 @@ class BankinPlayInterface(models.AbstractModel):
             "exportados": True
         }
 
-        if company_id.bankinplay_last_syncdate:
+        if fecha_desde:
+            params['fecha_conciliacion_desde'] = self._bankinplay_fmt_fecha(fecha_desde)
+        elif company_id.bankinplay_last_syncdate:
             params['fecha_conciliacion_desde'] = (
                 company_id.bankinplay_last_syncdate - relativedelta(days=2)).strftime("%d/%m/%Y")
         else:
             params['fecha_conciliacion_desde'] = company_id.bankinplay_start_date.strftime(
                 "%d/%m/%Y")
+
+        if fecha_hasta:
+            params['fecha_conciliacion_hasta'] = self._bankinplay_fmt_fecha(fecha_hasta)
 
         data = self._simple_post_request(access_data, url, {}, json.dumps(params))
 

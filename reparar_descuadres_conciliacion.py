@@ -499,13 +499,12 @@ def analizar(env):
     print("=" * 90)
 
 
-def redescargar(env, company_id, fecha_desde):
-    """OPT-IN. Vuelve a pedir a BankInPlay la conciliación de terceros desde
-    `fecha_desde` (str 'YYYY-MM-DD' o date) para regenerar logs/payload de un
-    periodo cuyo log se purgó. La petición usa last_syncdate-2d como fecha desde;
-    aquí la bajamos, encolamos la importación y BankInPlay responde por webhook.
-    El callback deja last_syncdate=hoy al terminar. Uso:
-        redescargar(env, <company_id>, '2026-06-01')
+def redescargar(env, company_id, fecha_desde, fecha_hasta=None):
+    """OPT-IN. Vuelve a pedir a BankInPlay la conciliación de terceros de un RANGO
+    acotado [fecha_desde, fecha_hasta] (str 'YYYY-MM-DD' o date), para regenerar
+    el log/payload de un periodo cuyo log se purgó SIN bajar todo el histórico.
+    Requiere conciliation_online_bankinplay >= 16.1.5 (soporte fecha_hasta). Uso:
+        redescargar(env, <company_id>, '2026-06-01', '2026-06-30')
     """
     company = env['res.company'].sudo().browse(company_id).exists()
     if not company:
@@ -513,15 +512,15 @@ def redescargar(env, company_id, fecha_desde):
         return
     if hasattr(fecha_desde, 'strftime'):
         fecha_desde = fecha_desde.strftime('%Y-%m-%d')
-    print("Cía %s: bankinplay_last_syncdate %s -> %s (re-descarga)"
-          % (company.id, company.bankinplay_last_syncdate, fecha_desde))
+    if hasattr(fecha_hasta, 'strftime'):
+        fecha_hasta = fecha_hasta.strftime('%Y-%m-%d')
+    print("Cía %s: re-descarga conciliación %s -> %s"
+          % (company.id, fecha_desde, fecha_hasta or '(hoy)'))
     if DRY_RUN:
         print("  [DRY_RUN] No se lanza. Pon DRY_RUN=False para ejecutar.")
         return
-    from odoo import fields as _fields
-    company.bankinplay_last_syncdate = _fields.Date.to_date(fecha_desde)
     company.with_context(company_id=company.id).with_delay(
-        max_retries=0).bankinplay_import_documents()
+        max_retries=0).bankinplay_import_documents(fecha_desde, fecha_hasta)
     env.cr.commit()
     print("  Petición encolada. Espera el callback, revisa logs y re-ejecuta analizar().")
 

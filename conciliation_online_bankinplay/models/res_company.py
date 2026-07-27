@@ -105,11 +105,11 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
 
-    def bankinplay_import_documents(self):
+    def bankinplay_import_documents(self, fecha_desde=None, fecha_hasta=None):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        interface_model._import_conciliate_documents(access_data)
-        
+        interface_model._import_conciliate_documents(access_data, fecha_desde, fecha_hasta)
+
     def bankinplay_import_account_moves(self):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
