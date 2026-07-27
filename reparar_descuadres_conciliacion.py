@@ -91,11 +91,10 @@ def _mapa_payloads(env):
     """Construye {id_movimiento: {sociedad, docs, event_data}} a partir de los logs
     de conciliación con payload. Consolida por id_movimiento el payload más completo
     (más documentos; a igualdad, el más reciente), aunque venga en varios logs."""
-    dom = [
-        ('triggered_event', '=', TRIGGERED_EVENT),
-        ('operation_type', '=', 'response'),
-        ('desencrypt_data', '!=', False),
-    ]
+    # ROBUSTO: cualquier log que conserve payload descifrado, SIN filtrar por
+    # triggered_event/operation_type ni exigir event_data (esos filtros dejaban
+    # fuera logs que sí tienen el payload). Los que no traen 'sociedades' se saltan.
+    dom = [('desencrypt_data', '!=', False)]
     if COMPANY_IDS:
         dom.append(('company_id', 'in', COMPANY_IDS))
     logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
@@ -109,16 +108,12 @@ def _mapa_payloads(env):
 
     por_id, por_desc = {}, {}   # {id_movimiento: entry}, {descripcion_norm: entry}
     for log in logs:
+        raw = log.desencrypt_data
         try:
-            data = json.loads(log.desencrypt_data)
+            data = json.loads(raw) if isinstance(raw, str) else raw
         except (TypeError, ValueError):
             continue
-        req_log = log.related_log_id or log
-        if not req_log.event_data:
-            continue
-        try:
-            event_data = json.loads(req_log.event_data)
-        except (TypeError, ValueError):
+        if not isinstance(data, dict):
             continue
         for soc in (data.get('sociedades') or []):
             por_mov = {}
@@ -127,8 +122,7 @@ def _mapa_payloads(env):
                 if idm:
                     por_mov.setdefault(idm, []).append(doc)
             for idm, docs in por_mov.items():
-                entry = {'sociedad': soc, 'docs': docs,
-                         'event_data': event_data, 'date_time': log.date_time}
+                entry = {'sociedad': soc, 'docs': docs, 'date_time': log.date_time}
                 _upd(por_id, idm, entry)
                 descr = _norm(docs[0].get('descripcion_movimiento') if docs else '')
                 if descr:
@@ -339,29 +333,75 @@ def reparar(env):
     print("=" * 92)
 
 
+def _fmt_ddmmyyyy(f):
+    """A 'DD/MM/YYYY' (admite date/datetime o 'YYYY-MM-DD')."""
+    if not f:
+        return None
+    if hasattr(f, 'strftime'):
+        return f.strftime('%d/%m/%Y')
+    import datetime as _dt
+    return _dt.datetime.strptime(f[:10], '%Y-%m-%d').strftime('%d/%m/%Y')
+
+
 def redescargar(env, company_id, fecha_desde, fecha_hasta=None):
-    """OPT-IN. Vuelve a pedir a BankInPlay la conciliación de terceros de un rango
-    [fecha_desde, fecha_hasta] ('YYYY-MM-DD' o date) para regenerar el payload de un
-    periodo cuyo log se purgó. Requiere conciliation_online_bankinplay >= 16.1.5.
+    """OPT-IN. Re-solicita a BankInPlay la conciliación de terceros ACOTADA a
+    [fecha_desde, fecha_hasta] ('YYYY-MM-DD' o date), para regenerar el payload de
+    un periodo cuyo log se purgó.
+
+    AUTOCONTENIDA: construye la petición con fecha_conciliacion_desde/hasta y la
+    envía directamente, así funciona AUNQUE el conector desplegado sea la versión
+    ANTIGUA (que no soporta fecha_conciliacion_hasta). Crea el log de petición para
+    que el callback enlace la respuesta y guarde el payload.
         redescargar(env, <company_id>, '2026-06-01', '2026-06-30')
     """
+    import json as _json
     company = env['res.company'].sudo().browse(company_id).exists()
     if not company:
         print("Compañía %s no encontrada." % company_id)
         return
-    if hasattr(fecha_desde, 'strftime'):
-        fecha_desde = fecha_desde.strftime('%Y-%m-%d')
-    if hasattr(fecha_hasta, 'strftime'):
-        fecha_hasta = fecha_hasta.strftime('%Y-%m-%d')
-    print("Cía %s: re-descarga conciliación %s -> %s"
-          % (company.id, fecha_desde, fecha_hasta or '(hoy)'))
+    desde, hasta = _fmt_ddmmyyyy(fecha_desde), _fmt_ddmmyyyy(fecha_hasta)
+    print("Cía %s: re-descarga ACOTADA conciliación %s -> %s"
+          % (company.id, desde, hasta or '(hoy)'))
     if DRY_RUN:
         print("  [DRY_RUN] No se lanza. Pon DRY_RUN=False para ejecutar.")
         return
-    company.with_context(company_id=company.id).with_delay(
-        max_retries=0).bankinplay_import_documents(fecha_desde, fecha_hasta)
+    try:
+        from odoo.addons.conciliation_online_bankinplay.models.bankinplay_interface \
+            import BANKINPLAY_ENDPOINT_V1
+    except Exception:
+        from odoo.addons.account_statement_import_online_bankinplay.models.bankinplay_interface \
+            import BANKINPLAY_ENDPOINT_V1
+
+    access_data = company.check_bankinplay_connection()
+    interface = env['bankinplay.interface'].sudo()
+    params = {
+        "sociedades": [company.bankinplay_company_id],
+        "deshabilitar_callback": False,
+        "exportados": True,
+        "fecha_conciliacion_desde": desde,
+    }
+    if hasta:
+        params["fecha_conciliacion_hasta"] = hasta
+    url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
+    data = interface._simple_post_request(access_data, url, {}, _json.dumps(params))
+
+    env['bankinplay.log'].sudo().create({
+        'operation_type': 'request',
+        'request_data': _json.dumps(params),
+        'status': 'pending',
+        'notes': 'Re-descarga acotada (script reparación descuadres)',
+        'response_id': data.get('responseId', ''),
+        'signature': data.get('signature', ''),
+        'event_data': _json.dumps({
+            'event': 'exportacion_conciliacion_terceros',
+            'company_id': company.id,
+            'access_data': {k: v for k, v in access_data.items() if k != 'company_id'},
+        }),
+        'triggered_event': 'exportacion_conciliacion_terceros',
+        'company_id': company.id,
+    })
     env.cr.commit()
-    print("  Petición encolada. Espera el callback, revisa logs y re-ejecuta reparar().")
+    print("  Petición ACOTADA enviada. Espera el callback de BankInPlay y re-ejecuta reparar().")
 
 
 # En `odoo-bin shell` la variable `env` ya existe.
