@@ -39,6 +39,10 @@
 #      reparan en DIRECTO, sin llamar al conector -> no hace falta tenerlo
 #      desplegado con el fix. Ponlo a False solo si el conector YA está desplegado
 #      y prefieres que el propio conector rehaga la conciliación (replay).
+#   3) CONTROL DE COBERTURA (siempre, solo lectura): al final compara el universo
+#      CONTABLE de líneas de extracto BankInPlay sin conciliar (dinero atascado en
+#      la transitoria) con lo que el script puede reparar desde logs. Lo que quede
+#      SIN cobertura tiene el payload purgado -> te sugiere el redescargar().
 #
 # CÓMO EJECUTAR
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
@@ -318,6 +322,59 @@ def _reconciliar_directo(env, st_line, docs):
         return False, str(e)
 
 
+def _control_cobertura(env, candidatos):
+    """READ-ONLY. Control de cobertura: universo CONTABLE de líneas de extracto de
+    diarios BankInPlay SIN conciliar (dinero atascado en la transitoria/suspense)
+    frente a lo que el script puede reparar desde los logs. Los que queden SIN
+    cobertura tienen el payload del log purgado -> hay que redescargar() el periodo.
+    Respeta FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
+    """
+    companies = env['res.company'].sudo().search([('bankinplay_enabled', '=', True)])
+    if COMPANY_IDS:
+        companies = companies.filtered(lambda c: c.id in COMPANY_IDS)
+    journal_ids = companies.mapped('bankinplay_journal_ids').ids
+
+    print("\n" + "=" * 90)
+    print("CONTROL DE COBERTURA (contabilidad vs logs)")
+    print("=" * 90)
+    if not journal_ids:
+        print("  No hay diarios BankInPlay configurados; se omite.")
+        return
+
+    dom = [('journal_id', 'in', journal_ids), ('is_reconciled', '=', False)]
+    if FECHA_DESDE:
+        dom.append(('date', '>=', FECHA_DESDE))
+    if FECHA_HASTA:
+        dom.append(('date', '<=', FECHA_HASTA))
+    universo = env['account.bank.statement.line'].sudo().search(dom, order='date asc')
+
+    cubiertas = set()
+    for c in candidatos:
+        sl = c.get('st_datos') or c.get('st_line')
+        if sl:
+            cubiertas.add(sl.id)
+    sin_cobertura = universo.filtered(lambda l: l.id not in cubiertas)
+
+    print("  Universo contable (líneas BankInPlay SIN conciliar): %d" % len(universo))
+    print("  Cubiertas por el script (reparables desde logs) . . : %d"
+          % (len(universo) - len(sin_cobertura)))
+    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % len(sin_cobertura))
+    if not sin_cobertura:
+        print("  Todo el universo contable está cubierto por los logs. OK")
+        return
+
+    por_cia = {}
+    for i, sl in enumerate(sin_cobertura):
+        if i < MAX_DETALLE:
+            print("    line %s | %s | %s | importe %.2f | uii=%s"
+                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, sl.unique_import_id))
+        por_cia.setdefault(sl.company_id, []).append(sl.date)
+    print("  Sugerencia de re-descarga por compañía (rango detectado):")
+    for cia, fechas in por_cia.items():
+        print("    redescargar(env, %s, '%s', '%s')   # %s"
+              % (cia.id, str(min(fechas)), str(max(fechas)), cia.name))
+
+
 def analizar(env):
     dom = [
         ('triggered_event', '=', TRIGGERED_EVENT),
@@ -408,6 +465,7 @@ def analizar(env):
         print("No se detectan facturas conciliadas-pero-abiertas con el payload disponible.")
         print("Si esperabais casos aquí, revisad BUSCAR_TEXTO / fechas, o puede que el")
         print("payload del log esté purgado (>90 días) -> ver redescargar().")
+        _control_cobertura(env, [])
         return
 
     print("LEYENDA:")
@@ -514,6 +572,8 @@ def analizar(env):
             print("Quedan %d movimientos no localizables sin tocar (revisión manual)."
                   % n_manual)
     print("=" * 90)
+
+    _control_cobertura(env, candidatos)
 
 
 def redescargar(env, company_id, fecha_desde, fecha_hasta=None):
