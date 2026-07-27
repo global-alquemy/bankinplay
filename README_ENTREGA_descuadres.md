@@ -64,6 +64,13 @@ vez desplegado el módulo del punto 1, no se generan casos nuevos.
    envuelto en `_check_balanced`: si un asiento no cuadra, **revierte** y avisa.
    Nunca deja un asiento descuadrado ni una conciliación a medias.
 
+> **`FORZAR_DIRECTO`** (por defecto `True`): repara SIEMPRE por la vía directa
+> (lógica corregida dentro del script), así que **no hace falta tener el conector
+> desplegado con el fix** para reparar el histórico. Ponlo a `False` solo si el
+> conector ya está actualizado y preferís que sea él quien rehaga la conciliación
+> (replay). En cualquier caso, **desplegad el módulo** para cortar los descuadres
+> nuevos (el bug de signo sigue vivo hasta que se despliegue).
+
 ### Cómo ejecutarlo
 Arranca en **modo simulación** (`DRY_RUN = True`): no escribe nada, solo informa.
 

@@ -35,6 +35,10 @@
 #        c) NO localizable de ninguna forma: se informa y NO se toca.
 #      Ambas vías van envueltas en _check_balanced: si el asiento no cuadra,
 #      se revierte y se informa. NUNCA deja un asiento descuadrado.
+#      NOTA: con FORZAR_DIRECTO=True (por defecto) TODOS los localizables se
+#      reparan en DIRECTO, sin llamar al conector -> no hace falta tenerlo
+#      desplegado con el fix. Ponlo a False solo si el conector YA está desplegado
+#      y prefieres que el propio conector rehaga la conciliación (replay).
 #
 # CÓMO EJECUTAR
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
@@ -54,6 +58,13 @@ _logger = logging.getLogger("bankinplay.reparacion")
 # CONFIGURACIÓN
 # ==========================================================================
 DRY_RUN = True                 # True = solo diagnostica. False = repara.
+
+# Vía de reparación:
+#   True  = SIEMPRE reparación directa (lógica corregida dentro del script). No
+#           depende de que el conector esté actualizado. Recomendado por defecto.
+#   False = usa replay (reejecuta el conector) para los localizables por id, y
+#           directa para el resto. Requiere el conector ya desplegado con el fix.
+FORZAR_DIRECTO = True
 
 TRIGGERED_EVENT = 'exportacion_conciliacion_terceros'
 
@@ -322,8 +333,9 @@ def analizar(env):
     logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
 
     print("=" * 90)
-    print("DESCUADRES CONCILIACIÓN TERCEROS | MODO: %s"
-          % ('DIAGNÓSTICO (dry-run)' if DRY_RUN else '*** REPARACIÓN REAL ***'))
+    print("DESCUADRES CONCILIACIÓN TERCEROS | MODO: %s | VÍA: %s"
+          % ('DIAGNÓSTICO (dry-run)' if DRY_RUN else '*** REPARACIÓN REAL ***',
+             'SIEMPRE DIRECTA' if FORZAR_DIRECTO else 'replay + directa'))
     print("Logs de conciliación con payload: %d" % len(logs))
     print("=" * 90)
 
@@ -409,9 +421,10 @@ def analizar(env):
     n_por_id = sum(1 for c in candidatos if c['emparejable'])
     n_por_datos = sum(1 for c in candidatos if not c['emparejable'] and c['st_datos'])
     n_manual = len(candidatos) - n_por_id - n_por_datos
-    print("  Localizables por id (vía replay) . : %d" % n_por_id)
+    via_id = 'vía directa' if FORZAR_DIRECTO else 'vía replay'
+    print("  Localizables por id (%s) : %d" % (via_id, n_por_id))
     print("  Localizables por datos (vía directa): %d" % n_por_datos)
-    print("  No localizables (revisión manual) .: %d" % n_manual)
+    print("  No localizables (revisión manual) . : %d" % n_manual)
 
     reparados, fallidos = 0, 0
     detalle = 0
@@ -449,8 +462,24 @@ def analizar(env):
         if DRY_RUN:
             continue
 
-        # Elección de vía de reparación.
-        if c['emparejable']:
+        # Elección de vía de reparación:
+        #   - FORZAR_DIRECTO=True  -> siempre vía directa (no depende del conector).
+        #   - FORZAR_DIRECTO=False -> replay si es localizable por id; directa si no.
+        usar_directo = FORZAR_DIRECTO or not c['emparejable']
+
+        if usar_directo and c['st_datos']:
+            ok, msg = _reconciliar_directo(env, c['st_datos'], c['docs'])
+            if ok:
+                # Verificación post-reparación: transitoria a 0 y facturas cerradas.
+                c['st_datos'].invalidate_recordset()
+                residual = _suspense_residual(c['st_datos'])
+                abiertos2 = _docs_abiertos(env, c['docs'])
+                ok = abs(residual) <= EPS and not abiertos2
+                msg = "%s | residual=%.2f abiertas=%d" % (msg, residual, len(abiertos2))
+            print("    -> %s (directo) %s" % ('OK' if ok else 'REVISAR', msg))
+            reparados += 1 if ok else 0
+            fallidos += 0 if ok else 1
+        elif c['emparejable']:
             try:
                 st_line.action_undo_reconciliation()
                 env['bankinplay.interface'].sudo().manage_conciliacion_terceros_callback(
@@ -468,18 +497,6 @@ def analizar(env):
                 print("    -> ERROR (replay): %s" % e)
                 _logger.exception("Fallo replay movimiento %s", c['id_movimiento'])
                 fallidos += 1
-        elif c['st_datos']:
-            ok, msg = _reconciliar_directo(env, c['st_datos'], c['docs'])
-            if ok:
-                # Verificación post-reparación: transitoria a 0 y facturas cerradas.
-                c['st_datos'].invalidate_recordset()
-                residual = _suspense_residual(c['st_datos'])
-                abiertos2 = _docs_abiertos(env, c['docs'])
-                ok = abs(residual) <= EPS and not abiertos2
-                msg = "%s | residual=%.2f abiertas=%d" % (msg, residual, len(abiertos2))
-            print("    -> %s (directo) %s" % ('OK' if ok else 'REVISAR', msg))
-            reparados += 1 if ok else 0
-            fallidos += 0 if ok else 1
         else:
             print("    -> SIN REPARAR: no localizable (revisión manual).")
             fallidos += 1
