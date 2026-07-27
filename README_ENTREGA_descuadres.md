@@ -47,12 +47,22 @@ Es un proceso **puntual** (NO un cron): se ejecuta, se revisa y se termina. Una
 vez desplegado el módulo del punto 1, no se generan casos nuevos.
 
 ### Qué hace
-- Localiza los movimientos bancarios cuya conciliación quedó mal (residual en la
-  transitoria / facturas del movimiento sin saldar) por culpa del signo.
-- Para cada uno: deshace la conciliación (`action_undo_reconciliation`, método
-  estándar de Odoo) y la vuelve a aplicar con el código ya corregido, y luego
-  **verifica que el asiento cuadra** y la transitoria queda a cero.
-- No toca importes a mano: reprocesa con el propio conector, de forma controlada.
+1. **Detecta** los movimientos afectados por `id_documento_erp` (el id de la
+   `account.move.line` de la factura, referencia estable de Odoo): una factura
+   que BankInPlay da por conciliada pero que en Odoo sigue **abierta**. No
+   depende del emparejamiento por `id_movimiento`. **Consolida** los N documentos
+   de un mismo movimiento aunque vengan en varios logs.
+2. **Repara**, eligiendo vía para cada movimiento:
+   - **Localizable por id** (el `unique_import_id` es el que espera el conector):
+     se repara por **replay** — deshace la conciliación
+     (`action_undo_reconciliation`) y reejecuta el conector ya corregido.
+   - **Localizable por datos** (no casa por `id_movimiento`, pero se encuentra la
+     línea de extracto por **descripción + importe**): se repara en **directo**,
+     replicando la lógica corregida con el signo correcto.
+   - **No localizable**: se informa y **no se toca** (revisión manual).
+3. **Verifica** el resultado (transitoria a 0 y facturas saldadas) y va todo
+   envuelto en `_check_balanced`: si un asiento no cuadra, **revierte** y avisa.
+   Nunca deja un asiento descuadrado ni una conciliación a medias.
 
 ### Cómo ejecutarlo
 Arranca en **modo simulación** (`DRY_RUN = True`): no escribe nada, solo informa.
@@ -61,28 +71,26 @@ Arranca en **modo simulación** (`DRY_RUN = True`): no escribe nada, solo inform
 ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
 ```
 
-1. **Primera pasada (simulación)**: revisad el listado de movimientos que
-   detecta. En la cabecera del script podéis acotar por compañía, fechas o
-   `id_movimiento` concretos (`COMPANY_IDS`, `DATE_FROM`, `DATE_TO`,
-   `ONLY_MOVEMENT_IDS`).
+1. **Primera pasada (simulación)**. Recomendado acotar a un caso conocido para
+   revisarlo con calma, con las variables de la cabecera:
+   `DRY_RUN=True`, `BUSCAR_TEXTO='EROSKI'` (o `ONLY_MOVEMENT_IDS`, `COMPANY_IDS`,
+   `DATE_FROM`, `DATE_TO`). La salida indica, por movimiento, si es *localizable
+   por id / por datos / no localizable* y muestra `unique_import_id` ACTUAL vs
+   ESPERADO.
 2. Cuando estéis conformes, poned **`DRY_RUN = False`** y volved a ejecutarlo.
-   Reparará y mostrará, por cada movimiento, `OK` o `REVISAR`.
+   Reparará (replay + directo) y mostrará por cada movimiento `OK` o `REVISAR`.
 
 ### Casos "sin log" (payload antiguo purgado)
 Los logs con más de 90 días se purgan, y sin ese payload un caso no se puede
-reprocesar directamente. El script los **lista aparte** (sección *"LÍNEAS
-BANKINPLAY SIN LOG (requieren RE-DESCARGA)"*) y ofrece una función para
-volver a pedir esos documentos a BankInPlay:
+reprocesar. Para regenerarlo, el script incluye una función que vuelve a pedir a
+BankInPlay la conciliación de un periodo:
 
 ```python
 # dentro de odoo-bin shell, tras cargar el script:
 redescargar(env, <company_id>, '2026-06-01')   # fecha desde la que re-descargar
 ```
 
-Esto vuelve a solicitar la conciliación de terceros de ese periodo; al llegar la
-respuesta se regenera el log **y se reconcilian bien las líneas pendientes**.
-Después, volved a lanzar la reparación normal para cualquier caso que siguiera
-conciliado incorrectamente.
+Al llegar la respuesta se regenera el log; después, volved a lanzar `analizar(env)`.
 
 ---
 
