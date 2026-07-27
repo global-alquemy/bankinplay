@@ -73,10 +73,11 @@ Arranca en **modo simulación** (`DRY_RUN = True`): no escribe nada, solo inform
 
 1. **Primera pasada (simulación)**. Recomendado acotar a un caso conocido para
    revisarlo con calma, con las variables de la cabecera:
-   `DRY_RUN=True`, `BUSCAR_TEXTO='EROSKI'` (o `ONLY_MOVEMENT_IDS`, `COMPANY_IDS`,
-   `DATE_FROM`, `DATE_TO`). La salida indica, por movimiento, si es *localizable
-   por id / por datos / no localizable* y muestra `unique_import_id` ACTUAL vs
-   ESPERADO.
+   `DRY_RUN=True`, `BUSCAR_TEXTO='EROSKI'` (o `ONLY_MOVEMENT_IDS`, `COMPANY_IDS`).
+   Para acotar a un **periodo contable / cierre** (por fecha del movimiento
+   bancario): `FECHA_DESDE='2026-06-01'` y `FECHA_HASTA='2026-06-30'`. La salida
+   indica, por movimiento, su fecha y si es *localizable por id / por datos / no
+   localizable*, y muestra `unique_import_id` ACTUAL vs ESPERADO.
 2. Cuando estéis conformes, poned **`DRY_RUN = False`** y volved a ejecutarlo.
    Reparará (replay + directo) y mostrará por cada movimiento `OK` o `REVISAR`.
 

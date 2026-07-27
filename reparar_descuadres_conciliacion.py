@@ -40,6 +40,8 @@
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
 #   Recomendado 1ª vez:  DRY_RUN=True  y  BUSCAR_TEXTO='EROSKI'  (o el movimiento
 #   concreto que queráis revisar) para ver el diagnóstico antes de tocar nada.
+#   Para acotar a un periodo/cierre:  FECHA_DESDE='2026-06-01'  FECHA_HASTA='2026-06-30'
+#   (por fecha del movimiento bancario).
 #
 # ⚠️ Antes de reparar en real: copia de seguridad + prueba en staging.
 
@@ -57,10 +59,20 @@ TRIGGERED_EVENT = 'exportacion_conciliacion_terceros'
 
 # Filtros opcionales (vacío = sin filtro):
 COMPANY_IDS = []               # p.ej. [1]
-DATE_FROM = False              # p.ej. '2026-06-01 00:00:00' (filtra logs por date_time)
-DATE_TO = False                # p.ej. '2026-07-31 23:59:59'
+
+# Acotar por FECHA DEL MOVIMIENTO bancario = periodo contable (lo habitual para
+# un cierre). Formato 'YYYY-MM-DD'. Se usa la fecha de la línea de extracto y, si
+# no hay línea, la fecha de operación del payload.
+FECHA_DESDE = False            # p.ej. '2026-06-01'
+FECHA_HASTA = False            # p.ej. '2026-06-30'
+
 ONLY_MOVEMENT_IDS = []         # p.ej. ['471752127']
-BUSCAR_TEXTO = ''              # subcadena de descripcion_movimiento para acotar (p.ej. 'EROSKI')
+BUSCAR_TEXTO = ''              # subcadena de descripcion_movimiento (p.ej. 'EROSKI')
+
+# Prefiltro TÉCNICO opcional por fecha de RECEPCIÓN del log (no es el periodo
+# contable; sólo reduce los logs a parsear). Formato 'YYYY-MM-DD HH:MM:SS'.
+LOG_DATE_FROM = False
+LOG_DATE_TO = False
 
 EPS = 0.005                    # tolerancia de residual (moneda compañía)
 MAX_DETALLE = 500              # límite de líneas de detalle a imprimir
@@ -144,6 +156,31 @@ def _coincide_texto(docs):
         return True
     t = BUSCAR_TEXTO.lower()
     return any(t in (d.get('descripcion_movimiento') or '').lower() for d in docs)
+
+
+def _fecha_movimiento(st_line, st_datos, docs):
+    """Fecha del movimiento como 'YYYY-MM-DD': la de la línea de extracto si se
+    localiza (verdad contable); si no, la fecha de operación del payload."""
+    sl = st_line or st_datos
+    if sl and sl.date:
+        return str(sl.date)[:10]
+    if docs:
+        f = (docs[0].get('fecha_operacion_movimiento')
+             or docs[0].get('fecha_confirmacion') or '')
+        return f[:10]
+    return ''
+
+
+def _fuera_de_periodo(fecha):
+    """True si `fecha` ('YYYY-MM-DD') queda fuera de [FECHA_DESDE, FECHA_HASTA].
+    Si no se puede determinar la fecha, NO se descarta (se incluye por seguridad)."""
+    if not fecha:
+        return False
+    if FECHA_DESDE and fecha < FECHA_DESDE:
+        return True
+    if FECHA_HASTA and fecha > FECHA_HASTA:
+        return True
+    return False
 
 
 def _payload_reducido(sociedad, docs):
@@ -278,10 +315,10 @@ def analizar(env):
     ]
     if COMPANY_IDS:
         dom.append(('company_id', 'in', COMPANY_IDS))
-    if DATE_FROM:
-        dom.append(('date_time', '>=', DATE_FROM))
-    if DATE_TO:
-        dom.append(('date_time', '<=', DATE_TO))
+    if LOG_DATE_FROM:
+        dom.append(('date_time', '>=', LOG_DATE_FROM))
+    if LOG_DATE_TO:
+        dom.append(('date_time', '<=', LOG_DATE_TO))
     logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
 
     print("=" * 90)
@@ -341,12 +378,17 @@ def analizar(env):
             st_datos, motivo_datos = st_line, 'no aplica (localizable por id)'
         else:
             st_datos, motivo_datos = _buscar_statement_line_por_datos(env, m['docs'])
+
+        fecha_mov = _fecha_movimiento(st_line, st_datos, m['docs'])
+        if _fuera_de_periodo(fecha_mov):
+            continue  # fuera del periodo contable solicitado
+
         candidatos.append({
             'log': m['log'], 'sociedad': m['sociedad'], 'event_data': m['event_data'],
             'id_movimiento': id_movimiento, 'docs': m['docs'], 'abiertos': abiertos,
             'st_line': st_line, 'esperado': esperado, 'emparejable': emparejable,
             'st_datos': st_datos, 'motivo_datos': motivo_datos,
-            'multiple': id_movimiento in multiples,
+            'multiple': id_movimiento in multiples, 'fecha_mov': fecha_mov,
         })
 
     print("\nMovimientos con facturas abiertas (candidatos): %d\n" % len(candidatos))
@@ -378,9 +420,10 @@ def analizar(env):
         detalle += 1
         if detalle <= MAX_DETALLE:
             print("-" * 90)
-            desc = (c['abiertos'][0][0].get('descripcion_movimiento') or '')[:70]
-            print("Mov %s | docs totales: %d | facturas abiertas: %d%s | %s"
-                  % (c['id_movimiento'], len(c['docs']), len(c['abiertos']),
+            desc = (c['abiertos'][0][0].get('descripcion_movimiento') or '')[:65]
+            print("Mov %s | fecha %s | docs: %d | abiertas: %d%s | %s"
+                  % (c['id_movimiento'], c.get('fecha_mov') or '?', len(c['docs']),
+                     len(c['abiertos']),
                      ' | (docs en varios logs)' if c.get('multiple') else '', desc))
             for doc, ml in c['abiertos']:
                 print("    doc erp=%s (%s) tipo=%s signo=%s importe=%.2f "
