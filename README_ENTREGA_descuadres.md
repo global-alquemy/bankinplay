@@ -88,12 +88,14 @@ Arranca en **modo simulación** (`DRY_RUN = True`): no escribe nada, solo inform
 2. Cuando estéis conformes, poned **`DRY_RUN = False`** y volved a ejecutarlo.
    Reparará (replay + directo) y mostrará por cada movimiento `OK` o `REVISAR`.
 
-### Control de cobertura (¿los cubre todos?)
-Al final de cada ejecución, el script imprime un **control de cobertura**: cuántas
-líneas de extracto de diarios BankInPlay están **sin conciliar** a nivel contable
-(dinero atascado en la transitoria) frente a cuántas puede reparar desde los logs.
-Las que salgan **SIN cobertura** tienen el log purgado: el script sugiere el
-`redescargar()` del periodo para regenerarlas. Objetivo: dejar *SIN cobertura = 0*.
+### Asientos descuadrados + control de cobertura (¿los cubre todos?)
+Al final de cada ejecución, el script imprime la foto **contable** (independiente
+de los logs) de los **asientos descuadrados** = moves de extracto BankInPlay cuyo
+**DEBE ≠ HABER** (el conector los dejó así al escribir con
+`check_move_validity=False`). Muestra el descuadre por línea (debe−haber) y el
+**TOTAL**, y cruza con los logs: cuántos son **reparables** ya y cuántos están
+**SIN cobertura** (log purgado). Para estos últimos sugiere el `redescargar()` del
+periodo. Objetivo: dejar *SIN cobertura = 0* y, tras reparar, *DESCUADRE TOTAL = 0*.
 
 ### Casos "sin log" (payload antiguo purgado)
 Los logs con más de 90 días se purgan, y sin ese payload un caso no se puede

@@ -40,12 +40,11 @@
 #      desplegado con el fix. Ponlo a False solo si el conector YA está desplegado
 #      y prefieres que el propio conector rehaga la conciliación (replay).
 #   3) ASIENTOS DESCUADRADOS + COBERTURA (siempre, solo lectura): al final da la
-#      foto CONTABLE (independiente de logs) de los asientos descuadrados = líneas
-#      de extracto BankInPlay sin cuadrar (residual != 0 = dinero atascado en la
-#      transitoria), con el importe del descuadre por línea y el TOTAL. Distingue
-#      descuadre real (con intento de conciliación) de pendiente normal (sin
-#      tocar). Y cruza con los logs: cuántos son reparables ya y cuántos necesitan
-#      redescargar() (payload purgado).
+#      foto CONTABLE (independiente de logs) de los asientos descuadrados = moves
+#      de extracto BankInPlay cuyo DEBE != HABER (el conector los dejó así al
+#      escribir con check_move_validity=False). Muestra el descuadre por línea
+#      (debe-haber) y el TOTAL, y cruza con los logs: cuántos son reparables ya y
+#      cuántos necesitan redescargar() (payload purgado).
 #
 # CÓMO EJECUTAR
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
@@ -284,13 +283,17 @@ def _reconciliar_directo(env, st_line, docs):
         return False, ('neto documentos %.2f != importe extracto %.2f (revisar signo)'
                        % (neto, st_line.amount))
 
-    if st_line.is_reconciled:
+    # Normalizar la línea a su estado limpio (banco + transitoria) antes de rehacer.
+    # Deshacer si está conciliada O si el asiento está descuadrado (debe != haber),
+    # que es justamente el caso que reparamos: así partimos siempre de base cuadrada.
+    move = st_line.move_id
+    desbalance = sum(move.line_ids.mapped('debit')) - sum(move.line_ids.mapped('credit'))
+    if st_line.is_reconciled or abs(desbalance) > EPS:
         st_line.action_undo_reconciliation()
     _liq, suspense_lines, other_lines = st_line._seek_for_lines()
     if not suspense_lines:
         return False, 'sin línea suspense tras preparar'
 
-    move = st_line.move_id
     container = {"records": move, "self": move}
     to_reconcile = []
     try:
@@ -325,21 +328,12 @@ def _reconciliar_directo(env, st_line, docs):
         return False, str(e)
 
 
-def _tocado(st_line):
-    """True si el asiento del extracto YA tuvo un intento de conciliación (tiene
-    líneas de contrapartida además de banco y transitoria). Distingue un DESCUADRE
-    real (se intentó conciliar y quedó residual) de un simple pendiente sin tocar."""
-    _liq, _susp, other = st_line._seek_for_lines()
-    return bool(other)
-
-
 def _control_cobertura(env, candidatos):
-    """READ-ONLY. Foto CONTABLE de asientos DESCUADRADOS de diarios BankInPlay: son
-    las líneas de extracto sin cuadrar (residual != 0 = dinero atascado en la
-    transitoria). Es independiente de los logs. Además cruza con los logs para
-    decir cuántos se pueden reparar ya y cuántos necesitan redescargar().
-    El descuadre por línea = amount_residual (lo computa Odoo). Respeta
-    FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
+    """READ-ONLY. Foto CONTABLE de asientos DESCUADRADOS de diarios BankInPlay:
+    asientos de extracto cuyo DEBE != HABER (el conector los dejó descuadrados al
+    escribir con check_move_validity=False). Independiente de los logs. Cruza con
+    los logs para decir cuántos son reparables ya y cuántos necesitan redescargar().
+    Respeta FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
     """
     companies = env['res.company'].sudo().search([('bankinplay_enabled', '=', True)])
     if COMPANY_IDS:
@@ -347,18 +341,36 @@ def _control_cobertura(env, candidatos):
     journal_ids = companies.mapped('bankinplay_journal_ids').ids
 
     print("\n" + "=" * 90)
-    print("ASIENTOS DESCUADRADOS (contabilidad) + COBERTURA (logs)")
+    print("ASIENTOS DESCUADRADOS (debe != haber) + COBERTURA (logs)")
     print("=" * 90)
     if not journal_ids:
         print("  No hay diarios BankInPlay configurados; se omite.")
         return
 
-    dom = [('journal_id', 'in', journal_ids), ('is_reconciled', '=', False)]
+    # Asientos de extracto de esos diarios cuyo total DEBE != total HABER.
+    sql = """
+        SELECT am.statement_line_id,
+               COALESCE(SUM(aml.debit), 0)  AS d,
+               COALESCE(SUM(aml.credit), 0) AS c
+        FROM account_move_line aml
+        JOIN account_move am ON am.id = aml.move_id
+        WHERE am.journal_id IN %s
+          AND am.statement_line_id IS NOT NULL
+    """
+    params = [tuple(journal_ids)]
     if FECHA_DESDE:
-        dom.append(('date', '>=', FECHA_DESDE))
+        sql += " AND am.date >= %s"
+        params.append(FECHA_DESDE)
     if FECHA_HASTA:
-        dom.append(('date', '<=', FECHA_HASTA))
-    universo = env['account.bank.statement.line'].sudo().search(dom, order='date asc')
+        sql += " AND am.date <= %s"
+        params.append(FECHA_HASTA)
+    sql += """
+        GROUP BY am.statement_line_id
+        HAVING ABS(COALESCE(SUM(aml.debit), 0) - COALESCE(SUM(aml.credit), 0)) > %s
+    """
+    params.append(EPS)
+    env.cr.execute(sql, params)
+    rows = env.cr.fetchall()   # [(statement_line_id, debe, haber), ...]
 
     cubiertas = set()
     for c in candidatos:
@@ -366,35 +378,32 @@ def _control_cobertura(env, candidatos):
         if sl:
             cubiertas.add(sl.id)
 
-    filas, total_descuadre, n_tocados = [], 0.0, 0
-    for sl in universo:
-        residual = sl.amount_residual          # descuadre (0 = cuadrado)
-        tocado = _tocado(sl)
-        total_descuadre += abs(residual)
-        n_tocados += 1 if tocado else 0
-        filas.append((sl, residual, tocado, sl.id in cubiertas))
+    Line = env['account.bank.statement.line']
+    total, n_cub, detalle, por_cia_sincov = 0.0, 0, [], {}
+    for slid, d, c in rows:
+        sl = Line.browse(slid)
+        desc = round(d - c, 2)          # descuadre = debe - haber
+        total += abs(desc)
+        cov = slid in cubiertas
+        n_cub += 1 if cov else 0
+        detalle.append((sl, desc, cov))
+        if not cov:
+            por_cia_sincov.setdefault(sl.company_id, []).append(sl.date)
 
-    n_cub = sum(1 for f in filas if f[3])
-    print("  Líneas BankInPlay sin cuadrar (residual != 0) . . . : %d" % len(universo))
-    print("    · con intento de conciliación (DESCUADRE real) . : %d" % n_tocados)
-    print("    · sin tocar (pendientes normales) . . . . . . . . : %d" % (len(universo) - n_tocados))
-    print("  DESCUADRE TOTAL (suma de residuales, en valor abs.) : %.2f" % total_descuadre)
+    print("  Asientos descuadrados (debe != haber) . . . . . . . : %d" % len(rows))
+    print("  DESCUADRE TOTAL (suma |debe - haber|) . . . . . . . : %.2f" % total)
     print("  Reparables ya desde logs . . . . . . . . . . . . . .: %d" % n_cub)
-    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % (len(universo) - n_cub))
-    if not universo:
+    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % (len(rows) - n_cub))
+    if not rows:
         print("  No hay asientos descuadrados en el criterio dado. OK")
         return
 
-    print("  --- Detalle (DESCUADRE = residual atascado) ---")
-    por_cia_sincov = {}
-    for i, (sl, residual, tocado, cov) in enumerate(filas):
+    print("  --- Detalle (DESCUADRE = debe - haber) ---")
+    for i, (sl, desc, cov) in enumerate(detalle):
         if i < MAX_DETALLE:
-            print("    line %s | %s | %s | importe %.2f | DESCUADRE %.2f | %s | %s"
-                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, residual,
-                     'tocado' if tocado else 'sin tocar',
+            print("    line %s | %s | %s | importe %.2f | DESCUADRE %.2f | %s"
+                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, desc,
                      'reparable' if cov else 'SIN cobertura'))
-        if not cov:
-            por_cia_sincov.setdefault(sl.company_id, []).append(sl.date)
     if por_cia_sincov:
         print("  Re-descarga sugerida para los SIN cobertura:")
         for cia, fechas in por_cia_sincov.items():
