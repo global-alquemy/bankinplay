@@ -100,7 +100,14 @@ def _mapa_payloads(env):
         dom.append(('company_id', 'in', COMPANY_IDS))
     logs = env['bankinplay.log'].sudo().search(dom, order='date_time asc')
 
-    mejor = {}
+    def _upd(mp, key, entry):
+        prev = mp.get(key)
+        if prev is None or len(entry['docs']) > len(prev['docs']) or (
+                len(entry['docs']) == len(prev['docs'])
+                and entry['date_time'] > prev['date_time']):
+            mp[key] = entry
+
+    por_id, por_desc = {}, {}   # {id_movimiento: entry}, {descripcion_norm: entry}
     for log in logs:
         try:
             data = json.loads(log.desencrypt_data)
@@ -120,13 +127,34 @@ def _mapa_payloads(env):
                 if idm:
                     por_mov.setdefault(idm, []).append(doc)
             for idm, docs in por_mov.items():
-                prev = mejor.get(idm)
-                if prev is None or len(docs) > len(prev['docs']) or (
-                        len(docs) == len(prev['docs'])
-                        and log.date_time > prev['date_time']):
-                    mejor[idm] = {'sociedad': soc, 'docs': docs,
-                                  'event_data': event_data, 'date_time': log.date_time}
-    return mejor
+                entry = {'sociedad': soc, 'docs': docs,
+                         'event_data': event_data, 'date_time': log.date_time}
+                _upd(por_id, idm, entry)
+                descr = _norm(docs[0].get('descripcion_movimiento') if docs else '')
+                if descr:
+                    _upd(por_desc, descr, entry)
+    return por_id, por_desc
+
+
+def _norm(s):
+    """Normaliza una descripción para comparar (colapsa espacios, minúsculas)."""
+    return ' '.join((s or '').split()).strip().lower()
+
+
+def _buscar_payload(por_id, por_desc, st_line):
+    """Enlaza la línea descuadrada con su payload. Prioriza la DESCRIPCIÓN
+    (payment_ref == descripcion_movimiento), que es el enlace fiable; usa el
+    id_movimiento del unique_import_id solo como último recurso."""
+    key = _norm(st_line.payment_ref)
+    if key and key in por_desc:
+        return por_desc[key]
+    # tolerancia: una contiene a la otra (diferencias menores de formato)
+    if key:
+        for k, v in por_desc.items():
+            if key in k or k in key:
+                return v
+    idm = (st_line.unique_import_id or '').split('-')[-1]
+    return por_id.get(idm)
 
 
 def _buscar_descuadres(env):
@@ -251,14 +279,14 @@ def reparar(env):
           % ('DIAGNÓSTICO (dry-run)' if DRY_RUN else '*** REPARACIÓN REAL ***'))
     print("=" * 92)
 
-    mejor = _mapa_payloads(env)
+    por_id, por_desc = _mapa_payloads(env)
     descuadres = _buscar_descuadres(env)
 
     total = sum(abs(d) for _sl, d in descuadres)
     con, sin = [], []
     for sl, desc in descuadres:
         idm = (sl.unique_import_id or '').split('-')[-1]
-        m = mejor.get(idm)
+        m = _buscar_payload(por_id, por_desc, sl)
         (con if m else sin).append((sl, desc, idm, m))
 
     print("  Asientos descuadrados detectados . . . . . . . . . : %d" % len(descuadres))
