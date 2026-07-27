@@ -39,10 +39,13 @@
 #      reparan en DIRECTO, sin llamar al conector -> no hace falta tenerlo
 #      desplegado con el fix. Ponlo a False solo si el conector YA está desplegado
 #      y prefieres que el propio conector rehaga la conciliación (replay).
-#   3) CONTROL DE COBERTURA (siempre, solo lectura): al final compara el universo
-#      CONTABLE de líneas de extracto BankInPlay sin conciliar (dinero atascado en
-#      la transitoria) con lo que el script puede reparar desde logs. Lo que quede
-#      SIN cobertura tiene el payload purgado -> te sugiere el redescargar().
+#   3) ASIENTOS DESCUADRADOS + COBERTURA (siempre, solo lectura): al final da la
+#      foto CONTABLE (independiente de logs) de los asientos descuadrados = líneas
+#      de extracto BankInPlay sin cuadrar (residual != 0 = dinero atascado en la
+#      transitoria), con el importe del descuadre por línea y el TOTAL. Distingue
+#      descuadre real (con intento de conciliación) de pendiente normal (sin
+#      tocar). Y cruza con los logs: cuántos son reparables ya y cuántos necesitan
+#      redescargar() (payload purgado).
 #
 # CÓMO EJECUTAR
 #   ./odoo-bin shell -d <BASE_DE_DATOS> --no-http < reparar_descuadres_conciliacion.py
@@ -322,12 +325,21 @@ def _reconciliar_directo(env, st_line, docs):
         return False, str(e)
 
 
+def _tocado(st_line):
+    """True si el asiento del extracto YA tuvo un intento de conciliación (tiene
+    líneas de contrapartida además de banco y transitoria). Distingue un DESCUADRE
+    real (se intentó conciliar y quedó residual) de un simple pendiente sin tocar."""
+    _liq, _susp, other = st_line._seek_for_lines()
+    return bool(other)
+
+
 def _control_cobertura(env, candidatos):
-    """READ-ONLY. Control de cobertura: universo CONTABLE de líneas de extracto de
-    diarios BankInPlay SIN conciliar (dinero atascado en la transitoria/suspense)
-    frente a lo que el script puede reparar desde los logs. Los que queden SIN
-    cobertura tienen el payload del log purgado -> hay que redescargar() el periodo.
-    Respeta FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
+    """READ-ONLY. Foto CONTABLE de asientos DESCUADRADOS de diarios BankInPlay: son
+    las líneas de extracto sin cuadrar (residual != 0 = dinero atascado en la
+    transitoria). Es independiente de los logs. Además cruza con los logs para
+    decir cuántos se pueden reparar ya y cuántos necesitan redescargar().
+    El descuadre por línea = amount_residual (lo computa Odoo). Respeta
+    FECHA_DESDE/FECHA_HASTA y COMPANY_IDS.
     """
     companies = env['res.company'].sudo().search([('bankinplay_enabled', '=', True)])
     if COMPANY_IDS:
@@ -335,7 +347,7 @@ def _control_cobertura(env, candidatos):
     journal_ids = companies.mapped('bankinplay_journal_ids').ids
 
     print("\n" + "=" * 90)
-    print("CONTROL DE COBERTURA (contabilidad vs logs)")
+    print("ASIENTOS DESCUADRADOS (contabilidad) + COBERTURA (logs)")
     print("=" * 90)
     if not journal_ids:
         print("  No hay diarios BankInPlay configurados; se omite.")
@@ -353,26 +365,41 @@ def _control_cobertura(env, candidatos):
         sl = c.get('st_datos') or c.get('st_line')
         if sl:
             cubiertas.add(sl.id)
-    sin_cobertura = universo.filtered(lambda l: l.id not in cubiertas)
 
-    print("  Universo contable (líneas BankInPlay SIN conciliar): %d" % len(universo))
-    print("  Cubiertas por el script (reparables desde logs) . . : %d"
-          % (len(universo) - len(sin_cobertura)))
-    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % len(sin_cobertura))
-    if not sin_cobertura:
-        print("  Todo el universo contable está cubierto por los logs. OK")
+    filas, total_descuadre, n_tocados = [], 0.0, 0
+    for sl in universo:
+        residual = sl.amount_residual          # descuadre (0 = cuadrado)
+        tocado = _tocado(sl)
+        total_descuadre += abs(residual)
+        n_tocados += 1 if tocado else 0
+        filas.append((sl, residual, tocado, sl.id in cubiertas))
+
+    n_cub = sum(1 for f in filas if f[3])
+    print("  Líneas BankInPlay sin cuadrar (residual != 0) . . . : %d" % len(universo))
+    print("    · con intento de conciliación (DESCUADRE real) . : %d" % n_tocados)
+    print("    · sin tocar (pendientes normales) . . . . . . . . : %d" % (len(universo) - n_tocados))
+    print("  DESCUADRE TOTAL (suma de residuales, en valor abs.) : %.2f" % total_descuadre)
+    print("  Reparables ya desde logs . . . . . . . . . . . . . .: %d" % n_cub)
+    print("  SIN cobertura (payload purgado -> redescargar) . . .: %d" % (len(universo) - n_cub))
+    if not universo:
+        print("  No hay asientos descuadrados en el criterio dado. OK")
         return
 
-    por_cia = {}
-    for i, sl in enumerate(sin_cobertura):
+    print("  --- Detalle (DESCUADRE = residual atascado) ---")
+    por_cia_sincov = {}
+    for i, (sl, residual, tocado, cov) in enumerate(filas):
         if i < MAX_DETALLE:
-            print("    line %s | %s | %s | importe %.2f | uii=%s"
-                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, sl.unique_import_id))
-        por_cia.setdefault(sl.company_id, []).append(sl.date)
-    print("  Sugerencia de re-descarga por compañía (rango detectado):")
-    for cia, fechas in por_cia.items():
-        print("    redescargar(env, %s, '%s', '%s')   # %s"
-              % (cia.id, str(min(fechas)), str(max(fechas)), cia.name))
+            print("    line %s | %s | %s | importe %.2f | DESCUADRE %.2f | %s | %s"
+                  % (sl.id, sl.date, sl.journal_id.code, sl.amount, residual,
+                     'tocado' if tocado else 'sin tocar',
+                     'reparable' if cov else 'SIN cobertura'))
+        if not cov:
+            por_cia_sincov.setdefault(sl.company_id, []).append(sl.date)
+    if por_cia_sincov:
+        print("  Re-descarga sugerida para los SIN cobertura:")
+        for cia, fechas in por_cia_sincov.items():
+            print("    redescargar(env, %s, '%s', '%s')   # %s"
+                  % (cia.id, str(min(fechas)), str(max(fechas)), cia.name))
 
 
 def analizar(env):
