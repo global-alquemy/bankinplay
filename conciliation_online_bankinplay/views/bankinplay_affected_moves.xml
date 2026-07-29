@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!--
+        Localiza los asientos de extracto de BankInPlay que quedaron con líneas de
+        cliente/proveedor (430/400) SIN conciliar contra la factura: el asiento se
+        posteó y cuadró, pero el reconcile falló (p. ej. factura bloqueada por SII).
+        Firma: línea de extracto (statement_line_id) en diario BankInPlay, cuenta
+        de cobro/pago, posteada y NO conciliada.
+    -->
+    <record id="action_bankinplay_affected_moves_server" model="ir.actions.server">
+        <field name="name">BankInPlay: Asientos con facturas sin conciliar</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+provider_journals = env['online.bank.statement.provider'].sudo().search(
+    [('service', '=', 'bankinplay')]).mapped('journal_id')
+lines = env['account.move.line'].search([
+    ('statement_line_id', '!=', False),
+    ('journal_id', 'in', provider_journals.ids),
+    ('account_id.internal_type', 'in', ('receivable', 'payable')),
+    ('reconciled', '=', False),
+    ('parent_state', '=', 'posted'),
+])
+moves = lines.mapped('move_id')
+action = {
+    'type': 'ir.actions.act_window',
+    'name': 'Asientos BankInPlay con facturas sin conciliar',
+    'res_model': 'account.move',
+    'view_mode': 'tree,form',
+    'domain': [('id', 'in', moves.ids)],
+    'context': {'create': False},
+}
+        </field>
+    </record>
+
+    <menuitem id="menu_bankinplay_affected_moves"
+              name="BankInPlay: Asientos sin conciliar"
+              parent="account.account_banks_menu"
+              action="action_bankinplay_affected_moves_server"
+              sequence="102"/>
+
+    <!--
+        Revolcado: revierte la conciliación de los asientos seleccionados y
+        relanza la importación (rango de fechas + exportados) para que el inbox
+        los rehaga. Aparece en el menú "Acción" de las listas de asientos,
+        solo para responsables de contabilidad.
+    -->
+    <record id="action_bankinplay_revert_reprocess_server" model="ir.actions.server">
+        <field name="name">BankInPlay: Revertir y reprocesar (inbox)</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    action = records.action_bankinplay_revert_and_reprocess()
+        </field>
+    </record>
+</odoo>
