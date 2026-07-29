@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Procesadores del inbox: cada minuto, lote configurable (§8). -->
+    <record id="cron_bankinplay_process_conciliation" model="ir.cron">
+        <field name="name">Bankinplay: Procesar conciliación terceros (inbox)</field>
+        <field name="model_id" ref="model_bankinplay_conciliation_movement"/>
+        <field name="state">code</field>
+        <field name="code">model._process_pending()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="cron_bankinplay_process_accounting" model="ir.cron">
+        <field name="name">Bankinplay: Procesar asientos contables (inbox)</field>
+        <field name="model_id" ref="model_bankinplay_accounting_entry"/>
+        <field name="state">code</field>
+        <field name="code">model._process_pending()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

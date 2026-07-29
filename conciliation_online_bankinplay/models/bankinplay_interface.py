@@ -503,10 +503,18 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = access_data.get('company_id', False)
 
+        # exportados: forzado por contexto (revolcado §13), o parámetro
+        # bankinplay.conciliation_include_exported (default True).
+        if self.env.context.get('bankinplay_force_exported'):
+            exportados = True
+        else:
+            include = self.env['ir.config_parameter'].sudo().get_param(
+                'bankinplay.conciliation_include_exported', 'True')
+            exportados = str(include).strip().lower() not in ('false', '0', '')
         params = {
             "sociedades": [company_id.bankinplay_company_id],
             "deshabilitar_callback": False,
-            "exportados": True
+            "exportados": exportados,
         }
 
         if fecha_desde:
@@ -662,15 +670,22 @@ class BankinPlayInterface(models.AbstractModel):
         company_id.bankinplay_last_syncdate = datetime.today()
         return True
 
-    def _import_account_moves(self, access_data):
-        """Envía petición asíncrona de asientos contables (callback)."""
+    def _import_account_moves(self, access_data, fecha_desde=None, fecha_hasta=None):
+        """Envía petición asíncrona de asientos contables (callback).
+
+        Si se indican fecha_desde/fecha_hasta (date o 'YYYY-MM-DD') acota la
+        petición a ese rango (revolcado/backfill, §13); si no, hasta hoy+1.
+        """
         url = BANKINPLAY_ENDPOINT_V1 + "/asientoContableApi/asiento_contable"
         company_id = access_data.get('company_id', False)
         params = {
-            "fechaHasta": (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
+            "fechaHasta": self._bankinplay_fmt_fecha(fecha_hasta) if fecha_hasta
+            else (datetime.today() + relativedelta(days=1)).strftime("%d/%m/%Y"),
             "sociedades": [company_id.bankinplay_company_id],
             "deshabilitar_callback": False
         }
+        if fecha_desde:
+            params["fechaDesde"] = self._bankinplay_fmt_fecha(fecha_desde)
 
         data = self._simple_post_request(access_data, url, {}, json.dumps(params))
 

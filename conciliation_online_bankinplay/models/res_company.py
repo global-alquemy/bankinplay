@@ -108,12 +108,17 @@ class ResCompany(models.Model):
     def bankinplay_import_documents(self, fecha_desde=None, fecha_hasta=None):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
+        # Rango de fechas por contexto (revolcado/backfill acotado, §13).
+        fecha_desde = fecha_desde or self.env.context.get('bankinplay_fecha_desde')
+        fecha_hasta = fecha_hasta or self.env.context.get('bankinplay_fecha_hasta')
         interface_model._import_conciliate_documents(access_data, fecha_desde, fecha_hasta)
 
-    def bankinplay_import_account_moves(self):
+    def bankinplay_import_account_moves(self, fecha_desde=None, fecha_hasta=None):
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        interface_model._import_account_moves(access_data)
+        fecha_desde = fecha_desde or self.env.context.get('bankinplay_fecha_desde')
+        fecha_hasta = fecha_hasta or self.env.context.get('bankinplay_fecha_hasta')
+        interface_model._import_account_moves(access_data, fecha_desde, fecha_hasta)
 
     def export_analytic_plan(self):
         access_data = self.check_bankinplay_connection()

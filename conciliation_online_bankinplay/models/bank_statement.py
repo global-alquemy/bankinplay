@@ -1,4 +1,6 @@
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 from odoo import models, fields
+
 
 class BankStatementLine(models.Model):
     _inherit = 'account.bank.statement.line'
@@ -6,4 +8,72 @@ class BankStatementLine(models.Model):
     bankinplay_sent = fields.Boolean(string='Enviado a BankinPlay', default=False)
     bankinplay_conciliation = fields.Boolean(string='Bankinplay conciliation', default=False)
 
-    
+    # ------------------------------------------------------------------
+    # Conciliación 16.0 Community (reemplaza process_reconciliation_oca de 15.0)
+    # ------------------------------------------------------------------
+    def _bankinplay_apply_reconciliation(self, counterparts, new_aml):
+        """Rehace el asiento de la línea de extracto: quita la transitoria y las
+        líneas previas, crea las contrapartidas de factura (que se reconcilian
+        contra su apunte) y las líneas write-off / apuntes (que no se reconcilian),
+        todo envuelto en ``move._check_balanced``.
+
+        Reemplaza en odoo16 Community el ``process_reconciliation_oca`` de odoo15.
+
+        :param counterparts: lista de dicts
+            ``{'move_line': account.move.line, 'name': str, 'debit': float, 'credit': float}``
+            La contrapartida se crea en la MISMA cuenta que ``move_line`` (430/400)
+            y en el lado que indique debit/credit, y se reconcilia con ``move_line``.
+        :param new_aml: lista de dicts para líneas que NO se reconcilian
+            ``{'name', 'debit', 'credit', 'account_id', 'partner_id'?, 'analytic_distribution'?}``
+
+        Si el asiento no cuadra, ``_check_balanced`` lanza y el llamador (el
+        procesador del inbox) lo captura y deja el registro en ``error``.
+        NUNCA deja un asiento descuadrado.
+        """
+        self.ensure_one()
+        AML = self.env['account.move.line']
+        _liquidity, suspense_lines, other_lines = self._seek_for_lines()
+        move = self.move_id
+        container = {"records": move, "self": move}
+        to_reconcile = []
+        with move._check_balanced(container):
+            move.with_context(
+                skip_account_move_synchronization=True,
+                force_delete=True,
+                skip_invoice_sync=True,
+            ).write({"line_ids": [(2, line.id) for line in (suspense_lines + other_lines)]})
+
+            for cp in counterparts:
+                move_line = cp['move_line']
+                new_line = AML.with_context(
+                    check_move_validity=False,
+                    skip_sync_invoice=True,
+                    skip_invoice_sync=True,
+                ).create({
+                    'move_id': move.id,
+                    'account_id': move_line.account_id.id,
+                    'partner_id': move_line.partner_id.id,
+                    'name': cp.get('name') or move_line.name,
+                    'debit': cp.get('debit', 0.0),
+                    'credit': cp.get('credit', 0.0),
+                })
+                to_reconcile.append(move_line + new_line)
+
+            for vals in new_aml:
+                AML.with_context(
+                    check_move_validity=False,
+                    skip_sync_invoice=True,
+                    skip_invoice_sync=True,
+                ).create({
+                    'move_id': move.id,
+                    'account_id': vals['account_id'],
+                    'partner_id': vals.get('partner_id', False),
+                    'name': vals.get('name', ''),
+                    'debit': vals.get('debit', 0.0),
+                    'credit': vals.get('credit', 0.0),
+                    'analytic_distribution': vals.get('analytic_distribution', False),
+                })
+
+        for pair in to_reconcile:
+            pair.reconcile()
+        return True

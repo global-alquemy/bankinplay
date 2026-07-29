@@ -38,9 +38,13 @@ class ConciliationCallbackController(http.Controller):
             })
             return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
 
-        response = interface_model.sudo().manage_conciliacion_terceros_callback(
-            desencrypt_data, event_data
-        )
+        # Inbox durable: el webhook SOLO registra (upsert). Un cron contabiliza
+        # de forma idempotente, con estado y reintentos (SPEC_inbox_bankinplay.md).
+        company = request.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
+        request.env['bankinplay.conciliation.movement'].sudo()._upsert_from_payload(
+            desencrypt_data, company, log_entry)
+        response = True
 
         if response:
             request_id.write({
@@ -79,9 +83,12 @@ class ConciliationCallbackController(http.Controller):
             })
             return {"status": "success", "message": "Datos recibidos correctamente (vacío)"}
 
-        response = interface_model.sudo().manage_asiento_contable_callback(
-            desencrypt_data, event_data
-        )
+        # Inbox durable: el webhook SOLO registra (upsert). Un cron contabiliza.
+        company = request.env['res.company'].sudo().browse(
+            event_data.get('company_id'))
+        request.env['bankinplay.accounting.entry'].sudo()._upsert_from_payload(
+            desencrypt_data, company, log_entry)
+        response = True
 
         if response:
             request_id.write({
