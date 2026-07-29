@@ -143,7 +143,10 @@ class BankinplayConciliationMovement(models.Model):
                     "configurada la cuenta 'bankinplay.anticipo_account_code'.")
                     % self.id_movimiento)
             amount = abs(doc.importe_conciliado) + ant_total
-            is_factura = bool(move_line.debit)  # factura en el Debe del cliente
+            # Signo por el SALDO del apunte (debit-credit), robusto a apuntes con
+            # débito/crédito negativo: factura = saldo deudor (>0) -> contrapartida
+            # al Haber; rectificativa/abono = saldo acreedor (<0) -> al Debe.
+            is_factura = move_line.balance > 0
             counterparts.append({
                 'move_line': move_line,
                 # nº de factura en la contrapartida 430 (§Fase 0 C)
