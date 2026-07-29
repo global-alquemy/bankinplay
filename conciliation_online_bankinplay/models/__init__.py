@@ -5,4 +5,7 @@ from . import account_move
 from . import res_partner
 from . import bank_statement
 from . import bankinplay_cancel_queue
+from . import bankinplay_inbox
+from . import bankinplay_conciliation
+from . import bankinplay_accounting_entry
 from . import callback

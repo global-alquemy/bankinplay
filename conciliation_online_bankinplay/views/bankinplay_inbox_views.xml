@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <!-- ============================================================ -->
+    <!-- Conciliación de terceros                                     -->
+    <!-- ============================================================ -->
+    <record id="view_bankinplay_conciliation_movement_tree" model="ir.ui.view">
+        <field name="name">bankinplay.conciliation.movement.tree</field>
+        <field name="model">bankinplay.conciliation.movement</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state in ('error','conflict')"
+                  decoration-muted="state in ('skipped','superseded')"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'ready'">
+                <field name="create_date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="id_movimiento"/>
+                <field name="descripcion" optional="show"/>
+                <field name="statement_line_id" optional="hide"/>
+                <field name="importe_movimiento" optional="show"/>
+                <field name="importe_documentos" optional="show"/>
+                <field name="attempts" optional="show"/>
+                <field name="last_attempt" optional="hide"/>
+                <field name="state"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_conciliation_movement_form" model="ir.ui.view">
+        <field name="name">bankinplay.conciliation.movement.form</field>
+        <field name="model">bankinplay.conciliation.movement</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_reprocess" type="object"
+                            string="Reprocesar" class="btn-primary"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="waiting,ready,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="id_movimiento"/>
+                            <field name="cuenta_bancaria"/>
+                            <field name="statement_line_id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="importe_movimiento"/>
+                            <field name="importe_documentos"/>
+                            <field name="attempts"/>
+                            <field name="last_attempt"/>
+                            <field name="log_id"/>
+                        </group>
+                    </group>
+                    <field name="descripcion"/>
+                    <field name="last_error" readonly="1"
+                           attrs="{'invisible': [('last_error', '=', False)]}"/>
+                    <notebook>
+                        <page string="Documentos / anticipos">
+                            <field name="document_ids">
+                                <tree decoration-muted="state == 'invalid'"
+                                      decoration-success="state == 'done'">
+                                    <field name="line_type"/>
+                                    <field name="no_documento"/>
+                                    <field name="id_documento_erp"/>
+                                    <field name="conciliacion_id"/>
+                                    <field name="importe"/>
+                                    <field name="importe_conciliado"/>
+                                    <field name="importe_pendiente"/>
+                                    <field name="importe_retencion"/>
+                                    <field name="move_line_id"/>
+                                    <field name="state"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Intentos">
+                            <field name="attempt_ids">
+                                <tree decoration-danger="result == 'error'"
+                                      decoration-success="result == 'success'">
+                                    <field name="date"/>
+                                    <field name="result"/>
+                                    <field name="message"/>
+                                    <field name="user_id"/>
+                                    <field name="log_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_conciliation_movement_search" model="ir.ui.view">
+        <field name="name">bankinplay.conciliation.movement.search</field>
+        <field name="model">bankinplay.conciliation.movement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="id_movimiento"/>
+                <field name="descripcion"/>
+                <filter name="waiting" string="En espera" domain="[('state','=','waiting')]"/>
+                <filter name="ready" string="Listos" domain="[('state','=','ready')]"/>
+                <filter name="error" string="Error" domain="[('state','=','error')]"/>
+                <filter name="conflict" string="Conflicto" domain="[('state','=','conflict')]"/>
+                <filter name="done" string="Contabilizados" domain="[('state','=','done')]"/>
+                <separator/>
+                <filter name="sin_linea" string="Sin línea de extracto"
+                        domain="[('statement_line_id','=',False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_state" string="Estado" context="{'group_by':'state'}"/>
+                    <filter name="g_company" string="Compañía" context="{'group_by':'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_conciliation_movement" model="ir.actions.act_window">
+        <field name="name">BankInPlay: Conciliación terceros (inbox)</field>
+        <field name="res_model">bankinplay.conciliation.movement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_error': 1, 'search_default_ready': 1, 'search_default_waiting': 1}</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Asientos contables                                           -->
+    <!-- ============================================================ -->
+    <record id="view_bankinplay_accounting_entry_tree" model="ir.ui.view">
+        <field name="name">bankinplay.accounting.entry.tree</field>
+        <field name="model">bankinplay.accounting.entry</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state in ('error','conflict')"
+                  decoration-muted="state in ('skipped','superseded')"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'ready'">
+                <field name="create_date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="id_movimiento"/>
+                <field name="descripcion" optional="show"/>
+                <field name="statement_line_id" optional="hide"/>
+                <field name="hold_until" optional="hide"/>
+                <field name="attempts" optional="show"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_accounting_entry_form" model="ir.ui.view">
+        <field name="name">bankinplay.accounting.entry.form</field>
+        <field name="model">bankinplay.accounting.entry</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_reprocess" type="object"
+                            string="Reprocesar" class="btn-primary"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="waiting,ready,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="id_movimiento"/>
+                            <field name="cuenta_bancaria"/>
+                            <field name="banco"/>
+                            <field name="statement_line_id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="hold_until"/>
+                            <field name="attempts"/>
+                            <field name="last_attempt"/>
+                            <field name="log_id"/>
+                            <field name="pdf_bancario" widget="url"/>
+                        </group>
+                    </group>
+                    <field name="descripcion"/>
+                    <field name="last_error" readonly="1"
+                           attrs="{'invisible': [('last_error', '=', False)]}"/>
+                    <notebook>
+                        <page string="Apuntes">
+                            <field name="line_ids">
+                                <tree decoration-muted="state == 'invalid'"
+                                      decoration-success="state == 'done'">
+                                    <field name="no_apunte"/>
+                                    <field name="cuenta_contable"/>
+                                    <field name="account_id"/>
+                                    <field name="debe_haber"/>
+                                    <field name="importe"/>
+                                    <field name="codigo_analitico"/>
+                                    <field name="analytic_account_id"/>
+                                    <field name="state"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Intentos">
+                            <field name="attempt_ids">
+                                <tree decoration-danger="result == 'error'"
+                                      decoration-success="result == 'success'">
+                                    <field name="date"/>
+                                    <field name="result"/>
+                                    <field name="message"/>
+                                    <field name="user_id"/>
+                                    <field name="log_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_bankinplay_accounting_entry_search" model="ir.ui.view">
+        <field name="name">bankinplay.accounting.entry.search</field>
+        <field name="model">bankinplay.accounting.entry</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="id_movimiento"/>
+                <field name="descripcion"/>
+                <filter name="waiting" string="En espera" domain="[('state','=','waiting')]"/>
+                <filter name="ready" string="Listos" domain="[('state','=','ready')]"/>
+                <filter name="error" string="Error" domain="[('state','=','error')]"/>
+                <filter name="conflict" string="Conflicto" domain="[('state','=','conflict')]"/>
+                <filter name="done" string="Contabilizados" domain="[('state','=','done')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_state" string="Estado" context="{'group_by':'state'}"/>
+                    <filter name="g_company" string="Compañía" context="{'group_by':'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_accounting_entry" model="ir.actions.act_window">
+        <field name="name">BankInPlay: Asientos contables (inbox)</field>
+        <field name="res_model">bankinplay.accounting.entry</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_error': 1, 'search_default_ready': 1, 'search_default_waiting': 1}</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Menús                                                        -->
+    <!-- ============================================================ -->
+    <menuitem id="menu_bankinplay_inbox_root"
+              name="BankInPlay Inbox"
+              parent="account.account_banks_menu"
+              sequence="103"/>
+    <menuitem id="menu_bankinplay_conciliation_movement"
+              name="Conciliación terceros"
+              parent="menu_bankinplay_inbox_root"
+              action="action_bankinplay_conciliation_movement"
+              sequence="10"/>
+    <menuitem id="menu_bankinplay_accounting_entry"
+              name="Asientos contables"
+              parent="menu_bankinplay_inbox_root"
+              action="action_bankinplay_accounting_entry"
+              sequence="20"/>
+</odoo>

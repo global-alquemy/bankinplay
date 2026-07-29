@@ -542,13 +542,29 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/conciliacion-terceros"
         company_id = access_data.get('company_id', False)
 
+        # 'exportados': por defecto True → BankInPlay reenvía también lo ya
+        # exportado (la vía de reintento actual). Con el inbox durable montado se
+        # puede poner el parámetro 'bankinplay.conciliation_include_exported' a
+        # 'False' para traer solo lo nuevo y aligerar el payload. El contexto
+        # 'bankinplay_force_exported' lo fuerza a True (revolcado / backfill).
+        include_exported = self.env.context.get('bankinplay_force_exported') or (
+            self.env['ir.config_parameter'].sudo().get_param(
+                'bankinplay.conciliation_include_exported', 'True') == 'True')
         params = {
             "sociedades": [company_id.bankinplay_company_id],
             "deshabilitar_callback": False,
-            "exportados": True
+            "exportados": include_exported,
         }
 
-        if company_id.bankinplay_last_syncdate:
+        # Rango explícito por contexto (revolcado / backfill). Si no viene, se usa
+        # el comportamiento normal basado en last_syncdate / start_date.
+        ctx_desde = self.env.context.get('bankinplay_fecha_desde')
+        ctx_hasta = self.env.context.get('bankinplay_fecha_hasta')
+        if ctx_desde:
+            params['fecha_conciliacion_desde'] = fields.Date.to_date(ctx_desde).strftime("%d/%m/%Y")
+            if ctx_hasta:
+                params['fecha_conciliacion_hasta'] = fields.Date.to_date(ctx_hasta).strftime("%d/%m/%Y")
+        elif company_id.bankinplay_last_syncdate:
             params['fecha_conciliacion_desde'] = (
                 company_id.bankinplay_last_syncdate - relativedelta(days=2)).strftime("%d/%m/%Y")
         else:
@@ -676,11 +692,20 @@ class BankinPlayInterface(models.AbstractModel):
                                         amount = doc['amount']
                                         counterparts.append({
                                             'move_line': move_line,
-                                            'name': statement_line.payment_ref or move_line.name,
+                                            # El concepto de la transferencia queda en la
+                                            # línea de banco (payment_ref); en la 430 se
+                                            # pone el nº de la factura conciliada.
+                                            'name': move_line.move_id.name or move_line.name,
                                             'debit': 0.0 if is_credit else amount,
                                             'credit': amount if is_credit else 0.0,
                                         })
-                                    statement_line.process_reconciliation_oca(counterparts, [], [])
+                                    # Savepoint: si el reconcile falla (p. ej. factura
+                                    # bloqueada por SII), se revierte el asiento posteado a
+                                    # medias y la línea de extracto queda pendiente
+                                    # (is_reconciled = False) para poder reintentarla.
+                                    with self.env.cr.savepoint():
+                                        statement_line.process_reconciliation_oca(
+                                            counterparts, [], [])
                                     self.env.cr.commit()
 
                             except Exception as e:
