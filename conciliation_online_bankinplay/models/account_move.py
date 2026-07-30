@@ -39,7 +39,9 @@ class AccountMove(models.Model):
             if not stmt_line:
                 skipped += 1
                 continue
-            stmt_line.action_undo_reconciliation()  # odoo16 (antes button_undo_reconciliation)
+            # Reset robusto: tolera asientos ya descuadrados (los históricos del
+            # conector antiguo), donde action_undo_reconciliation del core falla.
+            stmt_line._bankinplay_reset_move()
             reverted += 1
             comp_id = move.company_id.id
             lo, hi = ranges.get(comp_id, (move.date, move.date))

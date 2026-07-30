@@ -1,5 +1,5 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
-from odoo import models, fields
+from odoo import models, fields, Command
 
 
 class BankStatementLine(models.Model):
@@ -7,6 +7,29 @@ class BankStatementLine(models.Model):
 
     bankinplay_sent = fields.Boolean(string='Enviado a BankinPlay', default=False)
     bankinplay_conciliation = fields.Boolean(string='Bankinplay conciliation', default=False)
+
+    # ------------------------------------------------------------------
+    # Reset robusto (tolerante a asientos YA descuadrados)
+    # ------------------------------------------------------------------
+    def _bankinplay_reset_move(self):
+        """Deshace la conciliación y reconstruye el asiento a su estado limpio
+        (banco + transitoria), TOLERANTE a asientos que ya estén descuadrados.
+
+        El `action_undo_reconciliation` del core falla si el asiento actual no
+        cuadra (p. ej. los descuadres históricos del conector antiguo: debe != haber),
+        porque `_check_balanced` salta sobre el estado roto. Aquí reescribimos las
+        líneas con `check_move_validity=False`, que desactiva ese chequeo durante
+        la escritura; el resultado (banco + transitoria) SÍ cuadra.
+        """
+        self.ensure_one()
+        self.line_ids.remove_move_reconcile()
+        self.payment_ids.unlink()
+        self.with_context(force_delete=True, check_move_validity=False).write({
+            'to_check': False,
+            'line_ids': [Command.clear()] + [
+                Command.create(vals) for vals in self._prepare_move_line_default_vals()],
+        })
+        return True
 
     # ------------------------------------------------------------------
     # Conciliación 16.0 Community (reemplaza process_reconciliation_oca de 15.0)
