@@ -126,13 +126,42 @@ class BankinplayAccountingEntry(models.Model):
             _('Contabilizado en genérico por falta de documentos') if fallback else '')
 
     def _build_apuntes(self):
-        """new_aml a partir de los apuntes, saltando la cuenta de banco."""
+        """new_aml a partir de los apuntes, saltando el que representa el
+        movimiento bancario (el asiento del extracto ya tiene su línea de banco).
+
+        El apunte de banco se identifica primero por CÓDIGO de cuenta (la de
+        liquidez del asiento del extracto o la del diario). Si BankInPlay lo manda
+        en una cuenta distinta —p.ej. en los traspasos usa la cuenta de línea de
+        crédito (5201...) en vez de la del banco del diario (5720...)— se identifica
+        por IMPORTE + LADO respecto al movimiento del extracto. Así se evita dejar
+        una doble línea de banco (que descuadraba el asiento -> quedaba en error).
+        """
         self.ensure_one()
-        bank_code = self.statement_line_id.journal_id.default_account_id.code
-        new_aml = []
+        sl = self.statement_line_id
+        liquidity, _susp, _other = sl._seek_for_lines()
+        bank_codes = set(filter(None, liquidity.mapped('account_id.code')))
+        if sl.journal_id.default_account_id.code:
+            bank_codes.add(sl.journal_id.default_account_id.code)
+        bank_side = 'H' if sl.amount < 0 else 'D'  # pago -> haber, cobro -> debe
+
+        # Separar el apunte de banco (a saltar) del resto (contrapartidas).
+        resto = []
+        bank_skipped = False
         for line in self.line_ids:
-            if line.cuenta_contable == bank_code:
+            if not bank_skipped and line.cuenta_contable in bank_codes:
+                bank_skipped = True
                 continue
+            resto.append(line)
+        if not bank_skipped:
+            # El código no casó (mapeo distinto en BankInPlay): saltar por importe+lado.
+            for i, line in enumerate(resto):
+                if line.debe_haber == bank_side and abs((line.importe or 0.0) - abs(sl.amount)) < 0.005:
+                    resto.pop(i)
+                    bank_skipped = True
+                    break
+
+        new_aml = []
+        for line in resto:
             account = self.env['account.account'].search([
                 ('code', '=', line.cuenta_contable),
                 ('company_id', '=', self.company_id.id),
