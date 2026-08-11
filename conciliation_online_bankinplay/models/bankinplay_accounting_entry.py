@@ -115,54 +115,104 @@ class BankinplayAccountingEntry(models.Model):
                             'La línea de extracto ya estaba conciliada')
             return
 
-        new_aml = self._build_apuntes()
+        new_aml, replace_bank_line = self._build_apuntes()
         if not new_aml:
             self._mark_error('Sin apuntes válidos para contabilizar')
             return
-        statement_line._bankinplay_apply_reconciliation([], new_aml)
+        statement_line._bankinplay_apply_reconciliation(
+            [], new_aml, replace_bank_line=replace_bank_line)
         statement_line.write({'bankinplay_conciliation': True})
         fallback = self._is_tercero_type()
         self._mark_done(
             _('Contabilizado en genérico por falta de documentos') if fallback else '')
 
     def _build_apuntes(self):
-        """new_aml a partir de los apuntes, saltando el que representa el
-        movimiento bancario (el asiento del extracto ya tiene su línea de banco).
+        """Construye los apuntes (new_aml) y decide cómo tratar la pata de banco.
+        Devuelve ``(new_aml, replace_bank_line)``.
 
-        El apunte de banco se identifica primero por CÓDIGO de cuenta (la de
-        liquidez del asiento del extracto o la del diario). Si BankInPlay lo manda
-        en una cuenta distinta —p.ej. en los traspasos usa la cuenta de línea de
-        crédito (5201...) en vez de la del banco del diario (5720...)— se identifica
-        por IMPORTE + LADO respecto al movimiento del extracto. Así se evita dejar
-        una doble línea de banco (que descuadraba el asiento -> quedaba en error).
+        El apunte de banco se localiza primero por CÓDIGO de cuenta (la de liquidez
+        del asiento del extracto o la del diario). Si BankInPlay lo manda en una
+        cuenta distinta —p.ej. los movimientos históricos de una póliza de crédito
+        van en la 5201... y no en la cuenta corriente del diario (572...)— se
+        localiza por IMPORTE + LADO respecto al movimiento del extracto.
+
+        Dos modos según dónde contabilice BankInPlay el banco:
+
+        * **Coincide con el diario** (caso normal, p.ej. movimientos actuales): se
+          SALTA la pata de banco; el asiento del extracto ya aporta su línea de
+          liquidez en la cuenta del diario. ``replace_bank_line=False``.
+        * **Cuenta distinta a la del diario** (histórico de línea de crédito): se
+          RESPETA la cuenta de BankInPlay. La pata de banco se contabiliza en ESA
+          cuenta (5201...) y se elimina la línea de liquidez del diario. Odoo la
+          acepta como línea de banco (fallback de ``_seek_for_lines``) si la cuenta
+          es de tipo 'Banco y efectivo' o 'Tarjeta de crédito' —lo propio de una
+          póliza de crédito—. Así el histórico queda en la cuenta antigua, que es
+          lo contablemente correcto. ``replace_bank_line=True``.
         """
         self.ensure_one()
+        AA = self.env['account.account']
         sl = self.statement_line_id
         liquidity, _susp, _other = sl._seek_for_lines()
+        journal_account = sl.journal_id.default_account_id
         bank_codes = set(filter(None, liquidity.mapped('account_id.code')))
-        if sl.journal_id.default_account_id.code:
-            bank_codes.add(sl.journal_id.default_account_id.code)
+        if journal_account.code:
+            bank_codes.add(journal_account.code)
         bank_side = 'H' if sl.amount < 0 else 'D'  # pago -> haber, cobro -> debe
 
-        # Separar el apunte de banco (a saltar) del resto (contrapartidas).
+        # Localizar el apunte de banco: primero por código (== cuenta del diario);
+        # si no casa, por importe + lado (BankInPlay lo manda en otra cuenta).
+        bank_line = None
+        matched_by_code = False
         resto = []
-        bank_skipped = False
         for line in self.line_ids:
-            if not bank_skipped and line.cuenta_contable in bank_codes:
-                bank_skipped = True
+            if bank_line is None and line.cuenta_contable in bank_codes:
+                bank_line = line
+                matched_by_code = True
                 continue
             resto.append(line)
-        if not bank_skipped:
-            # El código no casó (mapeo distinto en BankInPlay): saltar por importe+lado.
+        if bank_line is None:
             for i, line in enumerate(resto):
                 if line.debe_haber == bank_side and abs((line.importe or 0.0) - abs(sl.amount)) < 0.005:
-                    resto.pop(i)
-                    bank_skipped = True
+                    bank_line = resto.pop(i)
                     break
 
+        # Decidir modo. Solo cuando el banco NO casó por código puede ir en cuenta
+        # distinta a la del diario (histórico de línea de crédito).
+        replace_bank_line = False
+        lines_to_post = resto
+        if bank_line is not None and not matched_by_code:
+            bank_account = AA.search([
+                ('code', '=', bank_line.cuenta_contable),
+                ('company_id', '=', self.company_id.id),
+            ], limit=1)
+            if bank_account and bank_account == journal_account:
+                # Misma cuenta con distinto formato de código: modo normal (saltar).
+                pass
+            elif not bank_account:
+                raise UserError(_(
+                    "La cuenta de banco %s que envía BankInPlay para el movimiento "
+                    "%s no existe en Odoo.")
+                    % (bank_line.cuenta_contable, self.id_movimiento))
+            elif bank_account.account_type not in ('asset_cash', 'liability_credit_card'):
+                raise UserError(_(
+                    "El movimiento %(mov)s contabiliza el banco en la cuenta %(cta)s, "
+                    "distinta de la del diario del extracto (%(diario)s). Para conciliar "
+                    "el extracto contra ella, la cuenta %(cta)s debe ser de tipo "
+                    "'Banco y efectivo' o 'Tarjeta de crédito' (es una línea de "
+                    "crédito). Cambia el tipo de la cuenta y reprocesa.") % {
+                        'mov': self.id_movimiento,
+                        'cta': bank_account.code,
+                        'diario': journal_account.code or '-',
+                    })
+            else:
+                # Respetar a BankInPlay: la pata de banco va a su cuenta (5201...) y
+                # se elimina la línea de liquidez del diario en el helper.
+                replace_bank_line = True
+                lines_to_post = [bank_line] + resto
+
         new_aml = []
-        for line in resto:
-            account = self.env['account.account'].search([
+        for line in lines_to_post:
+            account = AA.search([
                 ('code', '=', line.cuenta_contable),
                 ('company_id', '=', self.company_id.id),
             ], limit=1)
@@ -188,7 +238,7 @@ class BankinplayAccountingEntry(models.Model):
                 if self.statement_line_id.partner_id else False,
             })
             line.state = 'done'
-        return new_aml
+        return new_aml, replace_bank_line
 
     # ------------------------------------------------------------------
     # Upsert desde el callback

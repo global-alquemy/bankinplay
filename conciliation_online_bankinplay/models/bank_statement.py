@@ -34,7 +34,7 @@ class BankStatementLine(models.Model):
     # ------------------------------------------------------------------
     # Conciliación 16.0 Community (reemplaza process_reconciliation_oca de 15.0)
     # ------------------------------------------------------------------
-    def _bankinplay_apply_reconciliation(self, counterparts, new_aml):
+    def _bankinplay_apply_reconciliation(self, counterparts, new_aml, replace_bank_line=False):
         """Rehace el asiento de la línea de extracto: quita la transitoria y las
         líneas previas, crea las contrapartidas de factura (que se reconcilian
         contra su apunte) y las líneas write-off / apuntes (que no se reconcilian),
@@ -48,6 +48,12 @@ class BankStatementLine(models.Model):
             y en el lado que indique debit/credit, y se reconcilia con ``move_line``.
         :param new_aml: lista de dicts para líneas que NO se reconcilian
             ``{'name', 'debit', 'credit', 'account_id', 'partner_id'?, 'analytic_distribution'?}``
+        :param replace_bank_line: si True, elimina también la línea de liquidez del
+            diario (la 572...). En ese caso la pata de banco la aporta ``new_aml`` en
+            la cuenta que manda BankInPlay (p.ej. la 5201 de una línea de crédito
+            histórica). Odoo la reconoce como línea de banco vía el fallback de
+            ``_seek_for_lines`` si esa cuenta es de tipo 'Banco y efectivo' o
+            'Tarjeta de crédito'. Así el histórico queda en la cuenta antigua.
 
         Si el asiento no cuadra, ``_check_balanced`` lanza y el llamador (el
         procesador del inbox) lo captura y deja el registro en ``error``.
@@ -55,16 +61,19 @@ class BankStatementLine(models.Model):
         """
         self.ensure_one()
         AML = self.env['account.move.line']
-        _liquidity, suspense_lines, other_lines = self._seek_for_lines()
+        liquidity_lines, suspense_lines, other_lines = self._seek_for_lines()
         move = self.move_id
         container = {"records": move, "self": move}
         to_reconcile = []
+        lines_to_remove = suspense_lines + other_lines
+        if replace_bank_line:
+            lines_to_remove += liquidity_lines
         with move._check_balanced(container):
             move.with_context(
                 skip_account_move_synchronization=True,
                 force_delete=True,
                 skip_invoice_sync=True,
-            ).write({"line_ids": [(2, line.id) for line in (suspense_lines + other_lines)]})
+            ).write({"line_ids": [(2, line.id) for line in lines_to_remove]})
 
             for cp in counterparts:
                 move_line = cp['move_line']
