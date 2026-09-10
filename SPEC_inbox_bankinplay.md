@@ -29,7 +29,7 @@ Beneficios: no se pierde nada con la purga; los errores quedan aparcados y se au
 | | **Terceros** | **Asiento contable** |
 |---|---|---|
 | Endpoint | `/conciliacion-terceros` | `/asientoContableApi/asiento_contable` |
-| Callback | `manage_conciliacion_terceros_callback` | `manage_asiento_contable_callback` |
+| Callback | webhook → `bankinplay.conciliation.movement._upsert_from_payload` (inbox) | webhook → `bankinplay.accounting.entry._upsert_from_payload` (inbox) |
 | Qué hace | **Reconcilia** banco ↔ facturas (cierra la factura) | **Contabiliza** el asiento (banco + contrapartida), sin conciliar |
 | Cuándo | Cuando BankInPlay casa documentos | Para cualquier movimiento (cobros genéricos, traspasos, intereses, nóminas…) |
 | Llegada | Documentos **a trozos** en varios callbacks | Asiento **completo y cuadrado** de una vez |
@@ -240,7 +240,7 @@ Cada documento se reconcilia por su `importe_conciliado` contra la factura. Si n
 
 ## 11. Fase 0 — ya aplicado
 
-- **Savepoint** en `manage_conciliacion_terceros_callback`: si el `reconcile()` falla, no queda asiento a medias y la línea queda pendiente (reintentable).
+- **Savepoint por registro** en el procesado del inbox (`_process_pending` → `_process_one`): si el `reconcile()` falla, se revierte ese registro (no queda asiento a medias) y queda en `error`, reintentable.
 - **Etiqueta**: en las 430 va el nº de factura (`move_line.move_id.name`); el concepto de la transferencia queda en la 572.
 - **`exportados` configurable** (`bankinplay.conciliation_include_exported`, default `True`).
 - **Vista "BankInPlay: Asientos sin conciliar"** (`action_bankinplay_affected_moves_server`): lista los asientos de extracto con 430/400 sin conciliar (para diagnóstico y revolcado). Incluye la acción **"Revertir y reprocesar (inbox)"** (§13).

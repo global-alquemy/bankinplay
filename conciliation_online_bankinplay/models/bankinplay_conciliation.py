@@ -103,10 +103,15 @@ class BankinplayConciliationMovement(models.Model):
         self._mark_done()
 
     def _build_counterparts(self):
-        """Contrapartidas 430/400 (conciliadas) + línea de anticipo (write-off)."""
+        """Contrapartidas 430/400 (conciliadas) + línea de anticipo (write-off).
+
+        El lado (debe/haber) se toma del **saldo real del apunte de la factura**
+        (``move_line.balance``), no del signo del movimiento bancario: factura con
+        saldo deudor (>0) -> contrapartida al Haber; rectificativa/abono o factura
+        de compra compensada (saldo acreedor <0) -> al Debe. Así un movimiento con
+        documentos de distinto signo (compensación) cuadra el asiento.
+        """
         self.ensure_one()
-        statement_line = self.statement_line_id
-        is_credit = statement_line.amount > 0
         payable = self.env.ref('account.data_account_type_payable')
         receivable = self.env.ref('account.data_account_type_receivable')
         anticipo_account = self._anticipo_account()
@@ -138,19 +143,25 @@ class BankinplayConciliationMovement(models.Model):
                     "configurada la cuenta 'bankinplay.anticipo_account_code'.")
                     % self.id_movimiento)
             amount = abs(doc.importe_conciliado) + ant_total
+            # Signo por el SALDO del apunte (debit-credit), robusto a apuntes con
+            # débito/crédito negativo: factura = saldo deudor (>0) -> contrapartida
+            # al Haber; rectificativa/abono o compra compensada = saldo acreedor
+            # (<0) -> al Debe. (fix del descuadre en compensaciones, cf. v16)
+            is_factura = move_line.balance > 0
             counterparts.append({
                 'move_line': move_line,
                 # Concepto en la 572; nº de factura en la 430 (§Fase 0 C)
                 'name': move_line.move_id.name or move_line.name,
-                'debit': 0.0 if is_credit else amount,
-                'credit': amount if is_credit else 0.0,
+                'debit': 0.0 if is_factura else amount,
+                'credit': amount if is_factura else 0.0,
             })
             doc.state = 'done'
             if ant_total:
+                # el anticipo/retención va al lado opuesto de la contrapartida
                 new_aml.append({
                     'name': _('Anticipo/retención %s') % (doc.no_documento or ''),
-                    'debit': ant_total if is_credit else 0.0,
-                    'credit': 0.0 if is_credit else ant_total,
+                    'debit': ant_total if is_factura else 0.0,
+                    'credit': 0.0 if is_factura else ant_total,
                     'account_id': anticipo_account.id,
                 })
                 ant.write({'state': 'done'})
