@@ -313,8 +313,20 @@ class BankinPlayInterface(models.AbstractModel):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"
         company_id = access_data.get('company_id', False)
 
-        document_ids = self.env['account.move.line'].search([('company_id', '=', company_id.id), ('date', '>=', start_date), ("partner_id", '!=', False), ('parent_state', '=', 'posted'), (
-            'bankinplay_sent', '=', False), ('journal_id', 'in', journal_ids), ('amount_residual', '!=', 0)]).filtered(lambda x: x.partner_id.vat and x.account_id.account_type in ['asset_receivable', 'liability_payable'])
+        # Apuntes nunca enviados con saldo pendiente, O ya enviados que han
+        # cambiado tras el envío (bankinplay_needs_update): cobros, remesas,
+        # vencimientos, rectificativas... así BankInPlay no los sigue viendo
+        # pendientes (y no intenta conciliar facturas ya cobradas en Odoo).
+        document_ids = self.env['account.move.line'].search([
+            ('company_id', '=', company_id.id),
+            ('date', '>=', start_date),
+            ("partner_id", '!=', False),
+            ('parent_state', '=', 'posted'),
+            ('journal_id', 'in', journal_ids),
+            '|',
+            '&', ('bankinplay_sent', '=', False), ('amount_residual', '!=', 0),
+            ('bankinplay_needs_update', '=', True),
+        ]).filtered(lambda x: x.partner_id.vat and x.account_id.account_type in ['asset_receivable', 'liability_payable'])
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -388,6 +400,7 @@ class BankinPlayInterface(models.AbstractModel):
                     if move_line:
                         move_line.write({
                             "bankinplay_sent": True,
+                            "bankinplay_needs_update": False,
                         })
                 
 
