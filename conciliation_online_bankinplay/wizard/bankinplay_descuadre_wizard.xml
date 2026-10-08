@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="bankinplay_descuadre_wizard_form" model="ir.ui.view">
+        <field name="name">bankinplay.descuadre.wizard.form</field>
+        <field name="model">bankinplay.descuadre.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reparar asientos descuadrados">
+                <field name="state" invisible="1"/>
+                <div class="alert alert-info" role="alert"
+                     attrs="{'invisible': [('state', '!=', 'draft')]}">
+                    Busca asientos de extracto contabilizados con <b>Debe ≠ Haber</b>
+                    (descuadres históricos del conector antiguo: rectificativas o
+                    compras compensadas en el lado equivocado).
+                    <b>Analizar</b> solo lista y propone la corrección; no modifica nada.
+                    <b>Reparar</b> cambia de lado la contrapartida mal puesta y la
+                    concilia con su factura, sin tocar el resto del asiento.
+                </div>
+                <group>
+                    <group>
+                        <field name="company_ids" widget="many2many_tags"
+                               options="{'no_create': True}"/>
+                        <field name="allow_unmatched"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <div class="alert alert-warning" role="alert"
+                     attrs="{'invisible': ['|', ('state', '!=', 'analyzed'), ('line_ids', '!=', [])]}">
+                    No se han encontrado asientos descuadrados con estos filtros.
+                </div>
+                <field name="line_ids" nolabel="1"
+                       attrs="{'invisible': [('state', '=', 'draft')]}">
+                    <tree editable="bottom" create="0" delete="0"
+                          decoration-success="status in ('ok', 'repaired')"
+                          decoration-warning="status == 'ok_unmatched'"
+                          decoration-danger="status in ('review', 'error')">
+                        <field name="selected"
+                               attrs="{'readonly': [('status', 'not in', ('ok', 'ok_unmatched'))]}"/>
+                        <field name="date"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                        <field name="journal_id"/>
+                        <field name="move_id"/>
+                        <field name="payment_ref"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="amount"/>
+                        <field name="diff" sum="Descuadre total"/>
+                        <field name="status"/>
+                        <field name="detail"/>
+                        <button name="action_open_move" type="object"
+                                icon="fa-external-link" title="Ver asiento"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_analyze" type="object" string="Analizar"
+                            class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_repair" type="object"
+                            string="Reparar seleccionados" class="btn-primary"
+                            attrs="{'invisible': [('state', '!=', 'analyzed')]}"
+                            confirm="Se modificarán los asientos seleccionados. ¿Tienes copia de seguridad de la base de datos?"/>
+                    <button name="action_analyze" type="object"
+                            string="Volver a analizar" class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_bankinplay_descuadre_wizard" model="ir.actions.act_window">
+        <field name="name">Reparar asientos descuadrados</field>
+        <field name="res_model">bankinplay.descuadre.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'dialog_size': 'extra-large'}</field>
+    </record>
+
+    <menuitem id="menu_bankinplay_descuadre_wizard"
+              name="BankInPlay: Reparar asientos descuadrados"
+              action="action_bankinplay_descuadre_wizard"
+              parent="account.account_banks_menu"
+              sequence="103"/>
+</odoo>

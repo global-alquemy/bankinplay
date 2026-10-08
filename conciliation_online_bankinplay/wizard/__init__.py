@@ -2,3 +2,4 @@
 
 from . import bankinplay_mass_company_wizard
 from . import bankinplay_actions_wizard
+from . import bankinplay_descuadre_wizard
