@@ -67,14 +67,27 @@ class BankinplayInboxMixin(models.AbstractModel):
     # Resolución de línea de extracto (§5.1)
     # ------------------------------------------------------------------
     def _find_statement_line(self):
-        """Resuelve la línea de extracto por unique_import_id (sufijo id_movimiento)."""
+        """Resuelve la línea de extracto por unique_import_id.
+
+        El importador lo guarda como ``<cuenta>-<diario>-<id_movimiento>``. Se
+        busca por SUFIJO EXACTO: un ``like`` ("contiene") casaba también líneas
+        cuyo id de movimiento o IBAN contienen este id, y vinculaba la línea
+        equivocada. Si hay varias, desempata por la cuenta bancaria del payload
+        (como el handler antiguo); si sigue habiendo duda, no vincula ninguna.
+        """
         self.ensure_one()
-        if not self.id_movimiento:
-            return self.env['account.bank.statement.line']
-        return self.env['account.bank.statement.line'].search([
+        StLine = self.env['account.bank.statement.line']
+        id_mov = (self.id_movimiento or '').strip()
+        if not id_mov.isdigit():
+            return StLine
+        lines = StLine.search([
             ('company_id', '=', self.company_id.id),
-            ('unique_import_id', 'like', self.id_movimiento),
-        ], limit=1)
+            ('unique_import_id', '=like', '%-' + id_mov),
+        ])
+        if len(lines) > 1 and self.cuenta_bancaria:
+            lines = lines.filtered(
+                lambda line: line.unique_import_id.startswith(self.cuenta_bancaria + '-'))
+        return lines if len(lines) == 1 else StLine
 
     def _is_ready(self):
         """Readiness específico del flujo. Por defecto, con línea de extracto basta."""
