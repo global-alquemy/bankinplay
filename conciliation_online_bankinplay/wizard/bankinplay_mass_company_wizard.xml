@@ -124,9 +124,9 @@
         <field name="code">action = model.action_open_wizard()</field>
     </record>
 
-    <menuitem id="menu_bankinplay_mass_company_config"
-              name="Configuración masiva Bankinplay (Compañías)"
+    <menuitem id="menu_bip_mass_company"
+              name="Configuración masiva compañías"
               action="action_bankinplay_mass_company_wizard_server"
-              parent="account.account_banks_menu"
-              sequence="103"/>
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
+              sequence="80"/>
 </odoo>

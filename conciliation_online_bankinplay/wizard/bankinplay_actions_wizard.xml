@@ -40,9 +40,9 @@
         <field name="target">new</field>
     </record>
 
-    <menuitem id="menu_bankinplay_actions"
-              name="Acciones BankInPlay"
+    <menuitem id="menu_bip_actions"
+              name="Acciones manuales"
               action="action_bankinplay_actions_wizard"
-              parent="account.account_banks_menu"
-              sequence="104"/>
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
+              sequence="10"/>
 </odoo>

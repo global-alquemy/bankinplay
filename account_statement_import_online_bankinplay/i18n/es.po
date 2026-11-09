@@ -221,11 +221,6 @@ msgid "Log Bankinplay"
 msgstr "Registro de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
-#: model:ir.ui.menu,name:account_statement_import_online_bankinplay.menu_bankinplay_log
-msgid "Logs"
-msgstr "Registros"
-
-#. module: account_statement_import_online_bankinplay
 #: model:ir.actions.act_window,name:account_statement_import_online_bankinplay.action_bankinplay_log
 msgid "Logs de Bankinplay"
 msgstr "Registros de BankInPlay"
@@ -400,11 +395,6 @@ msgstr "Asistente de Configuración Masiva de Bankinplay"
 #: model:ir.actions.act_window,name:account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard
 msgid "Configure Bankinplay"
 msgstr "Configurar Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.ui.menu,name:account_statement_import_online_bankinplay.menu_bankinplay_mass_config
-msgid "Mass Configure Bankinplay"
-msgstr "Configuración Masiva de Bankinplay"
 
 #. module: account_statement_import_online_bankinplay
 #: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
