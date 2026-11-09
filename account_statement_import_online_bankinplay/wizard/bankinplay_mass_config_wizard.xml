@@ -54,9 +54,9 @@
         <field name="target">new</field>
     </record>
 
-    <menuitem id="menu_bankinplay_mass_config"
-              name="Configuración masiva Bankinplay"
+    <menuitem id="menu_bip_mass_config"
+              name="Configuración masiva extractos"
               action="action_bankinplay_mass_config_wizard"
-              parent="account.account_banks_menu"
-              sequence="102"/>
+              parent="menu_bankinplay_root"
+              sequence="70"/>
 </odoo>

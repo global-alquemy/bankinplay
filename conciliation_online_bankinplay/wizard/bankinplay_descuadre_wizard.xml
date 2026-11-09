@@ -77,9 +77,9 @@
         <field name="context">{'dialog_size': 'extra-large'}</field>
     </record>
 
-    <menuitem id="menu_bankinplay_descuadre_wizard"
-              name="BankInPlay: Reparar asientos descuadrados"
+    <menuitem id="menu_bip_descuadre_wizard"
+              name="Reparar asientos descuadrados"
               action="action_bankinplay_descuadre_wizard"
-              parent="account.account_banks_menu"
-              sequence="103"/>
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
+              sequence="45"/>
 </odoo>

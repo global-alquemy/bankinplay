@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sección propia en Facturación > Configuración, al mismo nivel que
+         "Bancos". El menú de Odoo muestra este nivel como título y sus
+         hijos como opciones. -->
+    <menuitem id="menu_bankinplay_root"
+              name="BankInPlay"
+              parent="account.menu_finance_configuration"
+              groups="account.group_account_manager"
+              sequence="2"/>
+</odoo>

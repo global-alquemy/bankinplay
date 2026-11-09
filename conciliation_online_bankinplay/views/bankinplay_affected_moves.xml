@@ -33,11 +33,11 @@ action = {
         </field>
     </record>
 
-    <menuitem id="menu_bankinplay_affected_moves"
-              name="BankInPlay: Asientos sin conciliar"
-              parent="account.account_banks_menu"
+    <menuitem id="menu_bip_affected_moves"
+              name="Asientos sin conciliar"
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
               action="action_bankinplay_affected_moves_server"
-              sequence="102"/>
+              sequence="40"/>
 
     <!--
         Revolcado: revierte la conciliación de los asientos seleccionados y

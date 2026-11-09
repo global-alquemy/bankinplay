@@ -245,18 +245,16 @@
     <!-- ============================================================ -->
     <!-- Menús                                                        -->
     <!-- ============================================================ -->
-    <menuitem id="menu_bankinplay_inbox_root"
-              name="BankInPlay Inbox"
-              parent="account.account_banks_menu"
-              sequence="103"/>
-    <menuitem id="menu_bankinplay_conciliation_movement"
-              name="Conciliación terceros"
-              parent="menu_bankinplay_inbox_root"
+    <!-- Directamente bajo la sección BankInPlay: el menú de Odoo solo
+         muestra tres niveles (Configuración > sección > opción). -->
+    <menuitem id="menu_bip_inbox_conciliation"
+              name="Bandeja: conciliación terceros"
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
               action="action_bankinplay_conciliation_movement"
-              sequence="10"/>
-    <menuitem id="menu_bankinplay_accounting_entry"
-              name="Asientos contables"
-              parent="menu_bankinplay_inbox_root"
-              action="action_bankinplay_accounting_entry"
               sequence="20"/>
+    <menuitem id="menu_bip_inbox_accounting_entry"
+              name="Bandeja: asientos contables"
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
+              action="action_bankinplay_accounting_entry"
+              sequence="30"/>
 </odoo>
