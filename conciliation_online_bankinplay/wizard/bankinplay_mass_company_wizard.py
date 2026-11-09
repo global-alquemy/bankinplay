@@ -190,8 +190,7 @@ class BankinplayMassCompanyWizard(models.TransientModel):
         return self._ensure_action_company().export_analytic_plan()
 
     def action_wiz_export_documents(self):
-        self._ensure_action_company().bankinplay_export_documents()
-        return self._action_notify(_("Exportar documentos lanzado"))
+        return self._ensure_action_company().bankinplay_export_documents()
 
     def action_wiz_import_documents(self):
         self._ensure_action_company().bankinplay_import_documents()

@@ -100,10 +100,75 @@ class ResCompany(models.Model):
         data = interface_model._export_contacts(access_data, safe_eval(self.bankinplay_partner_domain) if self.bankinplay_partner_domain else[])
         return data
     
+    def _bankinplay_check_export_documents_config(self):
+        """Comprueba la configuración necesaria para enviar documentos de terceros.
+
+        Sin diarios o sin fecha de inicio no hay nada que buscar: en vez de
+        terminar "bien" sin llamar a la API, se avisa de qué falta.
+        """
+        self.ensure_one()
+        if not self.bankinplay_journal_ids:
+            raise UserError(_(
+                "BankInPlay - %(company)s: no hay diarios configurados para enviar "
+                "documentos.\n\nAñade los diarios de facturas de cliente y de "
+                "proveedor en Ajustes > Usuarios y compañías > Compañías > "
+                "%(company)s > pestaña BankInPlay > Diarios.") % {'company': self.name})
+        if not self.bankinplay_start_date:
+            raise UserError(_(
+                "BankInPlay - %(company)s: falta la fecha de inicio.\n\nIndica "
+                "desde qué fecha se envían las facturas en Ajustes > Usuarios y "
+                "compañías > Compañías > %(company)s > pestaña BankInPlay > Fecha "
+                "de Inicio BankInPlay."
+            ) % {'company': self.name})
+
+    def _bankinplay_export_documents_notification(self, result):
+        """Notificación con el resultado de la exportación de documentos."""
+        self.ensure_one()
+        no_vat_msg = ''
+        if result.get('no_vat'):
+            no_vat_msg = _(
+                " Apuntes que no se envían porque su cliente o proveedor no "
+                "tiene NIF: %s.") % result['no_vat']
+        if not result.get('sent'):
+            title = _("BankInPlay - %s: no hay nada que enviar") % self.name
+            message = _(
+                "No hay facturas de cliente ni de proveedor pendientes de enviar "
+                "(ni cambios) en los diarios %(journals)s desde el %(date)s."
+            ) % {
+                'journals': ", ".join(self.bankinplay_journal_ids.mapped('name')),
+                'date': self.bankinplay_start_date.strftime("%d/%m/%Y"),
+            }
+            notif_type = 'warning'
+        else:
+            title = _("BankInPlay - %s") % self.name
+            message = _(
+                "Documentos enviados a BankInPlay: %(sent)s (aceptados: %(ok)s)."
+            ) % {'sent': result['sent'], 'ok': result.get('accepted', 0)}
+            rejected = result['sent'] - result.get('accepted', 0)
+            notif_type = 'success'
+            if rejected:
+                message += _(
+                    " No aceptados: %s; revisa la respuesta en Registros BankInPlay."
+                ) % rejected
+                notif_type = 'warning'
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': title,
+                'message': message + no_vat_msg,
+                'type': notif_type,
+                'sticky': notif_type == 'warning',
+            },
+        }
+
     def bankinplay_export_documents(self):
+        self._bankinplay_check_export_documents_config()
         access_data = self.check_bankinplay_connection()
         interface_model = self.env["bankinplay.interface"]
-        interface_model._export_document_moves(access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
+        result = interface_model._export_document_moves(
+            access_data, self.bankinplay_start_date, self.bankinplay_journal_ids.ids)
+        return self._bankinplay_export_documents_notification(result or {})
 
     def bankinplay_import_documents(self, fecha_desde=None, fecha_hasta=None):
         access_data = self.check_bankinplay_connection()
