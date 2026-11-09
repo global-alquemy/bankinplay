@@ -59,13 +59,13 @@
         <field name="context">{'search_default_pending': 1}</field>
     </record>
 
-    <!-- Menú: Cola de anulaciones bajo Contabilidad > Bancos -->
+    <!-- Menú: Cola de anulaciones en la sección BankInPlay -->
     <menuitem
-        id="menu_bankinplay_cancel_queue"
-        name="BankInPlay: Cola de anulaciones"
-        parent="account.account_banks_menu"
+        id="menu_bip_cancel_queue"
+        name="Cola de anulaciones"
+        parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
         action="bankinplay_cancel_queue_action"
-        sequence="25"
+        sequence="60"
         groups="account.group_account_manager"/>
 
     <!-- Search View -->
