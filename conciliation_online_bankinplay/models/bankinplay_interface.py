@@ -161,7 +161,8 @@ class BankinPlayInterface(models.AbstractModel):
             contact = {
                 "nif": c.vat,
                 "nombre": c.name,
-                "alias": c.comercial if c.comercial else '',
+                # nombre comercial: campo de l10n_es_partner (opcional)
+                "alias": (c.comercial or '') if 'comercial' in c._fields else '',
                 "pais": c.country_id.code if c.country_id else '',
                 "domicilio": c.street if c.street else '',
                 "provincia": c.state_id.name if c.state_id else '',
@@ -357,7 +358,7 @@ class BankinPlayInterface(models.AbstractModel):
         # Enviar apuntes nunca enviados con saldo pendiente, O ya enviados que han
         # cambiado tras el envío (bankinplay_needs_update=True): cobros, vencimientos,
         # conciliaciones, rectificativas, etc.
-        document_ids = self.env['account.move.line'].search([
+        candidates = self.env['account.move.line'].search([
             ('company_id', '=', company_id.id),
             ('date', '>=', start_date),
             ("partner_id", '!=', False),
@@ -366,7 +367,11 @@ class BankinPlayInterface(models.AbstractModel):
             '|',
             '&', ('bankinplay_sent', '=', False), ('amount_residual', '!=', 0),
             ('bankinplay_needs_update', '=', True),
-        ]).filtered(lambda x: x.partner_id.vat and x.account_id.user_type_id in [receivable_type, payable_type])
+        ]).filtered(lambda x: x.account_id.user_type_id in [receivable_type, payable_type])
+        # BankInPlay identifica al tercero por NIF: sin NIF no se puede enviar.
+        no_vat = candidates.filtered(lambda x: not x.partner_id.vat)
+        document_ids = candidates - no_vat
+        result = {'sent': 0, 'accepted': 0, 'no_vat': len(no_vat)}
 
         # partner_ids = document_ids.mapped('partner_id').filtered(lambda x: not x.bankinplay_sent or x.bankinplay_update)
         partner_ids = document_ids.mapped('partner_id')
@@ -387,7 +392,8 @@ class BankinPlayInterface(models.AbstractModel):
 
             amount_residual = abs(d.amount_residual)
             payment_order_id = False
-            if d.payment_line_ids and d.payment_line_ids[:1].payment_ids and d.payment_line_ids[:1].payment_ids[:1].payment_order_id:
+            # remesas: payment_line_ids es de account_payment_order (opcional)
+            if 'payment_line_ids' in d._fields and d.payment_line_ids and d.payment_line_ids[:1].payment_ids and d.payment_line_ids[:1].payment_ids[:1].payment_order_id:
                 amount_residual = abs(d.amount_currency)
                 payment_order_id = d.payment_line_ids[:1].payment_ids[:1].payment_order_id
                 if payment_order_id.state != 'uploaded':
@@ -429,12 +435,14 @@ class BankinPlayInterface(models.AbstractModel):
         }
 
         if len(documents) > 0:
+            result['sent'] = len(documents)
 
             data = self._get_pending_async_request(
                 access_data, self._post_request(access_data, url, {}, json.dumps(params)))
 
             for tercero in data.get('documentos', []):
                 if tercero.get('estado', 'Incorrecto') == 'correcto':
+                    result['accepted'] += 1
                     move_line = self.env['account.move.line'].search(
                         [('id', '=', tercero.get('id_documento_erp'))], limit=1)
                     if move_line:
@@ -442,6 +450,7 @@ class BankinPlayInterface(models.AbstractModel):
                             "bankinplay_sent": True,
                             "bankinplay_needs_update": False,
                         })
+        return result
                 
 
 

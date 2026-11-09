@@ -60,8 +60,5 @@ class BankinplayActionsWizard(models.TransientModel):
 
     def action_export_documents(self):
         company = self._ensure_company()
-        company.bankinplay_export_documents()
-        return self._action_notify(
-            _("BankInPlay - %s") % company.name,
-            _("Exportar terceros finalizado."),
-        )
+        # Devuelve la notificación con lo enviado (o "no hay nada que enviar")
+        return company.bankinplay_export_documents()
