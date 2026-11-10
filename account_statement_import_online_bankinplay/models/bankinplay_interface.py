@@ -178,7 +178,7 @@ class BankinPlayInterface(models.AbstractModel):
                 if not check_company:
                     raise UserError(
                         _("BankInPlay : wrong configuration, company %s not found in %s")
-                        % (self.vat, get_companies)
+                        % (bankinplay_account.get("cif_sociedad", ''), get_companies)
                     )
 
                 return access_data
@@ -521,9 +521,13 @@ class BankinPlayInterface(models.AbstractModel):
         signature = data.get('signature')
         response_id = data.get('responseId')
 
+        # Solo la petición original: la respuesta de un callback anterior lleva
+        # el mismo responseId/signature y, si BankInPlay reenvía el callback,
+        # aparecerían dos registros.
         request_id = self.env['bankinplay.log'].sudo().search(
             [('response_id', '=', response_id),
-             ('signature', '=', signature)])
+             ('signature', '=', signature),
+             ('operation_type', '=', 'request')], order='id', limit=1)
 
         if not request_id or not request_id.event_data:
             _logger.warning(
