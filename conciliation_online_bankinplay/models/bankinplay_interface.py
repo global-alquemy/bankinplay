@@ -585,7 +585,6 @@ class BankinPlayInterface(models.AbstractModel):
         event_data = {
             "event": "exportacion_conciliacion_terceros",
             "company_id": company_id.id,
-            "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
         }
 
         self.env['bankinplay.log'].sudo().create({
@@ -644,7 +643,6 @@ class BankinPlayInterface(models.AbstractModel):
         event_data = {
             "event": "asiento_contable",
             "company_id": company_id.id,
-            "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
         }
 
         self.env['bankinplay.log'].sudo().create({
