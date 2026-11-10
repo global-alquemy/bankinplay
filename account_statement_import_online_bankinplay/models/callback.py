@@ -21,7 +21,7 @@ class CallbackController(http.Controller):
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data, triggered_event='lectura_cierre')
 
@@ -64,7 +64,7 @@ class CallbackController(http.Controller):
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data, triggered_event='lectura_intradia')
         # Obtener los datos del cuerpo de la solicitud
@@ -107,7 +107,7 @@ class CallbackController(http.Controller):
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data, triggered_event='lectura_tarjeta')
         # Obtener los datos del cuerpo de la solicitud

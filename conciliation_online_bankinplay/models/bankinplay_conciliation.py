@@ -21,8 +21,12 @@ class BankinplayConciliationMovement(models.Model):
     _description = 'BankInPlay - Movimiento de conciliación de terceros'
 
     cuenta_bancaria = fields.Char(string='Cuenta bancaria')
+    # Importe del banco: el de la línea de extracto una vez vinculada (el
+    # payload de terceros no lo trae). Calculado, así vale también para los
+    # registros que ya existían.
     importe_movimiento = fields.Monetary(
-        string='Importe movimiento', currency_field='currency_id')
+        string='Importe movimiento', currency_field='currency_id',
+        compute='_compute_importe_movimiento')
     importe_documentos = fields.Monetary(
         string='Importe documentos', currency_field='currency_id',
         compute='_compute_importe_documentos', store=True)
@@ -36,6 +40,11 @@ class BankinplayConciliationMovement(models.Model):
          'unique(company_id, id_movimiento)',
          'Ya existe un movimiento de conciliación con ese id para la compañía.'),
     ]
+
+    @api.depends('statement_line_id.amount')
+    def _compute_importe_movimiento(self):
+        for mv in self:
+            mv.importe_movimiento = mv.statement_line_id.amount
 
     @api.depends('document_ids.importe_conciliado', 'document_ids.line_type')
     def _compute_importe_documentos(self):
