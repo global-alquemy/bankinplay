@@ -23,5 +23,6 @@
         "views/bank_statement.xml",
         "views/bankinplay_inbox_views.xml",
         "views/bankinplay_affected_moves.xml",
+        "views/bankinplay_cancel_queue.xml",
     ],
 }
