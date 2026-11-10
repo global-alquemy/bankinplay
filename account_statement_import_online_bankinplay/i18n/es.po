@@ -90,8 +90,8 @@ msgstr "Compañías"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_res_company__bankinplay_company_id
-msgid "Company ID"
-msgstr "ID de la empresa"
+msgid "BankInPlay Company ID"
+msgstr "ID de la empresa en BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_res_company__bankinplay_company_id
