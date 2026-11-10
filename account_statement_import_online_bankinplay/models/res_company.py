@@ -21,25 +21,38 @@ class ResCompany(models.Model):
     bankinplay_apikey = fields.Char(
         string="Api Key",
         help="Key for BankInPlay API access.",
+        groups="account.group_account_manager,base.group_system",
     )
 
     bankinplay_apisecret = fields.Char(
         string="Api Secret",
         help="Secret for BankInPlay API access.",
+        groups="account.group_account_manager,base.group_system",
     )
 
     bankinplay_company_id = fields.Char(
-        string="Company ID",
+        string="BankInPlay Company ID",
         help="Company ID for BankInPlay.",
     )
 
     def check_bankinplay_connection(self):
-        if not self.bankinplay_apikey or not self.bankinplay_apisecret:
+        self.ensure_one()
+        # BankInPlay identifica la sociedad por su NIF en todas las llamadas.
+        if not self.vat:
+            raise UserError(_(
+                "BankInPlay - %(company)s: la compañía no tiene NIF.\n\n"
+                "BankInPlay identifica la sociedad por su NIF. Añádelo en "
+                "Ajustes > Usuarios y compañías > Compañías > %(company)s.",
+                company=self.name))
+        # Las claves solo las ven los responsables; aquí se leen con sudo para
+        # que los procesos lanzados por otros usuarios puedan conectar.
+        company_sudo = self.sudo()
+        if not company_sudo.bankinplay_apikey or not company_sudo.bankinplay_apisecret:
             raise UserError(
                 _("Please provide both the API Key and the API Secret."))
         interface_model = self.env["bankinplay.interface"]
         access_data = interface_model._login(
-            self.bankinplay_apikey, self.bankinplay_apisecret)
+            company_sudo.bankinplay_apikey, company_sudo.bankinplay_apisecret)
         if not access_data:
             raise UserError(_("Connection Test Failed!"))
 
