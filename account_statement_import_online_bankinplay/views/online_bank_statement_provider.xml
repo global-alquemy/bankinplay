@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="account_statement_import_online.online_bank_statement_provider_form" />
         <field name="arch" type="xml">
             <xpath expr="//group[@name='main']" position="inside">
-                <group name="bankinplay" string="BankInPlay Config" attrs="{'invisible':[('service','!=','bankinplay')]}">
+                <group name="bankinplay" string="BankInPlay Config" invisible="service != 'bankinplay'">
                     <field name="username" string="Api Key" />
                     <field name="password" string="Secret Key" />
                     <div colspan="2">
@@ -15,7 +15,7 @@
                     <field name="bankinplay_date_field" />
                     <field name="bankinplay_import_type" />
                     <field name="bankinplay_is_card" />
-                    <field name="bankinplay_card_number" attrs="{'invisible':[('bankinplay_is_card','=',False)]}"/>
+                    <field name="bankinplay_card_number" invisible="not bankinplay_is_card"/>
                 </group>
             </xpath>
         </field>

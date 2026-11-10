@@ -16,7 +16,7 @@
                         <field name="journal_ids" widget="many2many_tags"
                                options="{'no_create': True}"
                                placeholder="Seleccionar diarios bancarios..."
-                               attrs="{'invisible': [('all_journals', '=', True)]}"/>
+                               invisible="all_journals"/>
                     </group>
                 </group>
                 <group>

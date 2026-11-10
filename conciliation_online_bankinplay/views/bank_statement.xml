@@ -8,8 +8,8 @@
         <field name="inherit_id" ref="account_statement_base.account_bank_statement_line_tree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='state']" position="after">
-                <field name="bankinplay_conciliation" optional="hidden"/>
-                <field name="bankinplay_sent" optional="hidden"/>
+                <field name="bankinplay_conciliation" optional="hide"/>
+                <field name="bankinplay_sent" optional="hide"/>
             </xpath>
 
         </field>

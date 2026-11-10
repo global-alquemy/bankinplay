@@ -7,7 +7,7 @@
             <form string="Reparar asientos descuadrados">
                 <field name="state" invisible="1"/>
                 <div class="alert alert-info" role="alert"
-                     attrs="{'invisible': [('state', '!=', 'draft')]}">
+                     invisible="state != 'draft'">
                     Busca asientos de extracto contabilizados con <b>Debe ≠ Haber</b>
                     (descuadres históricos del conector antiguo: rectificativas o
                     compras compensadas en el lado equivocado).
@@ -27,23 +27,23 @@
                     </group>
                 </group>
                 <div class="alert alert-warning" role="alert"
-                     attrs="{'invisible': ['|', ('state', '!=', 'analyzed'), ('line_ids', '!=', [])]}">
+                     invisible="state != 'analyzed' or line_ids">
                     No se han encontrado asientos descuadrados con estos filtros.
                 </div>
                 <field name="line_ids" nolabel="1"
-                       attrs="{'invisible': [('state', '=', 'draft')]}">
+                       invisible="state == 'draft'">
                     <tree editable="bottom" create="0" delete="0"
                           decoration-success="status in ('ok', 'repaired')"
                           decoration-warning="status == 'ok_unmatched'"
                           decoration-danger="status in ('review', 'error')">
                         <field name="selected"
-                               attrs="{'readonly': [('status', 'not in', ('ok', 'ok_unmatched'))]}"/>
+                               readonly="status not in ('ok', 'ok_unmatched')"/>
                         <field name="date"/>
                         <field name="company_id" groups="base.group_multi_company"/>
                         <field name="journal_id"/>
                         <field name="move_id"/>
                         <field name="payment_ref"/>
-                        <field name="currency_id" invisible="1"/>
+                        <field name="currency_id" column_invisible="1"/>
                         <field name="amount"/>
                         <field name="diff" sum="Descuadre total"/>
                         <field name="status"/>
@@ -55,14 +55,14 @@
                 <footer>
                     <button name="action_analyze" type="object" string="Analizar"
                             class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                            invisible="state != 'draft'"/>
                     <button name="action_repair" type="object"
                             string="Reparar seleccionados" class="btn-primary"
-                            attrs="{'invisible': [('state', '!=', 'analyzed')]}"
+                            invisible="state != 'analyzed'"
                             confirm="Se modificarán los asientos seleccionados. ¿Tienes copia de seguridad de la base de datos?"/>
                     <button name="action_analyze" type="object"
                             string="Volver a analizar" class="btn-secondary"
-                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                            invisible="state == 'draft'"/>
                     <button string="Cerrar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

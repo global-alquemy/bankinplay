@@ -46,7 +46,7 @@ class BankStatementLine(models.Model):
         return True
 
     # ------------------------------------------------------------------
-    # Conciliación 16.0 Community (reemplaza process_reconciliation_oca de 15.0)
+    # Conciliación en Community (sin widget de conciliación del núcleo)
     # ------------------------------------------------------------------
     def _bankinplay_apply_reconciliation(self, counterparts, new_aml, replace_bank_line=False):
         """Rehace el asiento de la línea de extracto: quita la transitoria y las
@@ -54,7 +54,7 @@ class BankStatementLine(models.Model):
         contra su apunte) y las líneas write-off / apuntes (que no se reconcilian),
         todo envuelto en ``move._check_balanced``.
 
-        Reemplaza en odoo16 Community el ``process_reconciliation_oca`` de odoo15.
+        Hace lo que en Odoo 15 hacía ``process_reconciliation`` de OCA.
 
         :param counterparts: lista de dicts
             ``{'move_line': account.move.line, 'name': str, 'debit': float, 'credit': float}``

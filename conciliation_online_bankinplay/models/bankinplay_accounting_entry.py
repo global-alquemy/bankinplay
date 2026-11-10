@@ -15,7 +15,7 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 DEFAULT_GRACE_DAYS = 5
-# odoo16: tipos de cuenta de cliente/proveedor (antes internal_type)
+# Tipos de cuenta de cliente/proveedor (account_type)
 RECEIVABLE_PAYABLE = ('asset_receivable', 'liability_payable')
 
 
@@ -232,7 +232,7 @@ class BankinplayAccountingEntry(models.Model):
                 'debit': debit,
                 'credit': credit,
                 'account_id': account.id,
-                # odoo16: analítica por distribución (no analytic_account_id)
+                # Analítica por distribución (analytic_distribution)
                 'analytic_distribution': {str(analytic.id): 100.0} if analytic else False,
                 'partner_id': self.statement_line_id.partner_id.id
                 if self.statement_line_id.partner_id else False,

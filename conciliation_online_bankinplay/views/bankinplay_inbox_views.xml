@@ -22,7 +22,7 @@
                 <field name="attempts" optional="show"/>
                 <field name="last_attempt" optional="hide"/>
                 <field name="state"/>
-                <field name="currency_id" invisible="1"/>
+                <field name="currency_id" column_invisible="1"/>
             </tree>
         </field>
     </record>
@@ -57,7 +57,7 @@
                     </group>
                     <field name="descripcion"/>
                     <field name="last_error" readonly="1"
-                           attrs="{'invisible': [('last_error', '=', False)]}"/>
+                           invisible="not last_error"/>
                     <notebook>
                         <page string="Documentos / anticipos">
                             <field name="document_ids">
@@ -73,7 +73,7 @@
                                     <field name="importe_retencion"/>
                                     <field name="move_line_id"/>
                                     <field name="state"/>
-                                    <field name="currency_id" invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
                                 </tree>
                             </field>
                         </page>
@@ -179,7 +179,7 @@
                     </group>
                     <field name="descripcion"/>
                     <field name="last_error" readonly="1"
-                           attrs="{'invisible': [('last_error', '=', False)]}"/>
+                           invisible="not last_error"/>
                     <notebook>
                         <page string="Apuntes">
                             <field name="line_ids">
@@ -193,7 +193,7 @@
                                     <field name="codigo_analitico"/>
                                     <field name="analytic_account_id"/>
                                     <field name="state"/>
-                                    <field name="currency_id" invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
                                 </tree>
                             </field>
                         </page>

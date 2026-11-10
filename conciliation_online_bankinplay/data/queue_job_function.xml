@@ -1,24 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!--
+        Funciones de job que hacen commit explícito (persistir el registro
+        bankinplay.log antes de que llegue el callback asíncrono de BankInPlay).
+        El name se fija explícitamente para que, en install_mode, queue_job
+        reutilice una función ya existente (rebind) en lugar de duplicarla.
+    -->
     <data noupdate="1">
-        <!--
-            Habilita "Allow Commit" en las funciones de job que necesitan hacer
-            commit explícito dentro del queue job (persistir el registro
-            bankinplay.log antes de que llegue el callback asíncrono de
-            BankInPlay). Requiere OCA queue_job >= 16.0.3.0.0.
-            El name se fija explícitamente para que, en install_mode, queue_job
-            reutilice una función ya existente (rebind) en lugar de duplicarla.
-        -->
         <record id="job_function_import_documents" model="queue.job.function">
             <field name="name">&lt;res.company&gt;.bankinplay_import_documents</field>
             <field name="channel_id" ref="queue_job.channel_root"/>
-            <field name="allow_commit" eval="True"/>
         </record>
 
         <record id="job_function_import_account_moves" model="queue.job.function">
             <field name="name">&lt;res.company&gt;.bankinplay_import_account_moves</field>
             <field name="channel_id" ref="queue_job.channel_root"/>
-            <field name="allow_commit" eval="True"/>
         </record>
     </data>
+
+    <!--
+        queue_job 17.0 no prohíbe el commit dentro de un job ni tiene el campo
+        "Allow Commit"; las versiones 16.0.3+ y 18.0 sí. Se activa solo si el
+        campo existe, y fuera del bloque noupdate para que se aplique también
+        al actualizar el módulo tras una actualización de queue_job.
+    -->
+    <function model="res.company" name="_bankinplay_enable_job_commit"/>
 </odoo>

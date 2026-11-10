@@ -261,6 +261,24 @@ class ResCompany(models.Model):
             }
         }
 
+    @api.model
+    def _bankinplay_enable_job_commit(self):
+        """Marca "Allow Commit" en los jobs de importación si queue_job lo tiene.
+
+        Esos jobs hacen commit para que el registro bankinplay.log exista antes
+        de que llegue el callback asíncrono. queue_job 17.0 deja hacer commit sin
+        más y no tiene el campo; 16.0.3+ y 18.0 lo prohíben salvo allow_commit.
+        Se llama desde data/queue_job_function.xml.
+        """
+        JobFunction = self.env['queue.job.function']
+        if 'allow_commit' not in JobFunction._fields:
+            return
+        for xmlid in ('job_function_import_documents', 'job_function_import_account_moves'):
+            function = self.env.ref(
+                'conciliation_online_bankinplay.%s' % xmlid, raise_if_not_found=False)
+            if function and not function.allow_commit:
+                function.allow_commit = True
+
     #BOTONES DE LA VISTA PARA LLAMAR A LAS FUNCIONES DE BANKINPLAY
     def bankinplay_export_account_plan_button(self):
         self.with_context(company_id=self.id).with_delay(max_retries=0).export_account_plan()

@@ -10,8 +10,8 @@ from odoo import _, fields, models
 _logger = logging.getLogger(__name__)
 
 # Campos del apunte que, si cambian tras el envío, requieren reenviarlo a
-# BankInPlay. Los cobros/pagos (incluidas las remesas, que en 16.0 concilian al
-# subirse) se detectan en reconcile()/remove_move_reconcile().
+# BankInPlay. Los cobros/pagos (incluidas las remesas, que concilian al subir
+# la orden de pago) se detectan en reconcile()/remove_move_reconcile().
 BANKINPLAY_TRACKED_FIELDS = ['date_maturity']
 RECEIVABLE_PAYABLE = ('asset_receivable', 'liability_payable')
 

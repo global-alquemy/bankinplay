@@ -14,7 +14,7 @@ from odoo.tools import float_compare
 
 _logger = logging.getLogger(__name__)
 
-# odoo16: tipos de cuenta de cliente/proveedor (antes user_type_id / internal_type)
+# Tipos de cuenta de cliente/proveedor (account_type)
 RECEIVABLE_PAYABLE = ('asset_receivable', 'liability_payable')
 
 
