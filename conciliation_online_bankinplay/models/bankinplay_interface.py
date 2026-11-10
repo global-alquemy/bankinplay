@@ -278,76 +278,47 @@ class BankinPlayInterface(models.AbstractModel):
 
         return data
 
-    def _cancel_document(self, access_data, move_id):
-
-        account_move_id = self.env['account.move'].search(
-            [('id', '=', move_id)], limit=1)
-
-        url_get_document = BANKINPLAY_ENDPOINT_V1 + "/sociedades/" + \
-            account_move_id.company_id.vat.replace(
-                'ES', '') + "/documentos-terceros/" + str(account_move_id.id)
-
-        params = {
-
-        }
-
-        document_data = self._get_request(
-            access_data, url_get_document, params)
-
-        if isinstance(document_data, int):
-
-            url = BANKINPLAY_ENDPOINT_V1 + \
-                "/documentos-terceros/anular/" + str(document_data)
-
-            data = self._delete_request(
-                access_data, url, {}, json.dumps(params))
-            responseId = data.get('responseId', '')
-            if not responseId:
-                raise UserError(
-                    'No se ha podido anular el documento en bankinplay')
-
-            if data.get('statusCode', 400) != 200:
-                raise UserError(
-                    'No se ha podido anular el documento en bankinplay')
-
-        else:
-            if document_data.get('errors', False):
-                raise UserError("BANKINPLAY: \n" +
-                                document_data.get('errors')[0]['description'])
-
     def _cancel_document_line(self, access_data, move_line_id):
-        """Anular un documento en BankinPlay usando el id del apunte contable."""
-        company_id = access_data.get('company_id', False)
+        """Anula en BankInPlay el documento de terceros de un apunte.
 
-        url_get_document = BANKINPLAY_ENDPOINT_V1 + "/sociedades/" + \
-            company_id.vat.replace('ES', '') + "/documentos-terceros/" + str(move_line_id)
+        BankInPlay anula por su id interno: se consulta primero el documento
+        por ``id_documento_erp`` (el id del apunte, que es con lo que se envió)
+        y después se anula.
 
-        params = {}
-
-        try:
-            document_data = self._get_request(access_data, url_get_document, params)
-
-            if isinstance(document_data, int):
-                url = BANKINPLAY_ENDPOINT_V1 + \
-                    "/documentos-terceros/anular/" + str(document_data)
-
-                data = self._delete_request(access_data, url, {}, json.dumps(params))
-
-                _logger.info("Documento %s anulado en BankinPlay", move_line_id)
-                return data
-
-            elif document_data.get('errors', False):
-                # Si el documento no existe en BankinPlay, no es un error crítico
-                _logger.warning(
-                    "Documento %s no encontrado en BankinPlay: %s",
-                    move_line_id,
-                    document_data.get('errors')[0].get('description', '')
-                )
-                return False
-
-        except Exception as e:
-            _logger.warning("Error al anular documento %s en BankinPlay: %s", move_line_id, e)
-            return False
+        :return: ``('done', detalle)`` si se ha anulado o ``('not_found',
+            detalle)`` si BankInPlay no lo tiene. Cualquier otro fallo lanza
+            excepción: la cola lo deja en error y lo reintenta.
+        """
+        company = access_data['company_id']
+        url = BANKINPLAY_ENDPOINT_V1 + "/sociedades/%s/documentos-terceros/%s" % (
+            company.vat.replace('ES', ''), move_line_id)
+        response = requests.get(
+            url, headers=self._get_request_headers(access_data), timeout=60)
+        if response.status_code == 404:
+            return 'not_found', _("BankInPlay no tiene el documento %s.") % move_line_id
+        document = self._get_response_data(response, access_data)
+        if isinstance(document, dict):
+            errors = document.get('errors')
+            if errors:
+                detail = errors[0].get('description') if isinstance(errors[0], dict) else errors[0]
+                return 'not_found', _("BankInPlay no tiene el documento %s: %s") % (
+                    move_line_id, detail)
+            document = document.get('id') or document.get('documento_tercero_id')
+        if isinstance(document, str) and document.isdigit():
+            document = int(document)
+        if isinstance(document, bool) or not isinstance(document, int):
+            raise UserError(_(
+                "Respuesta inesperada de BankInPlay al consultar el documento "
+                "%s: %s") % (move_line_id, document))
+        data = self._delete_request(
+            access_data,
+            BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros/anular/%s" % document,
+            {}, json.dumps({}))
+        status = data.get('statusCode', 200) if isinstance(data, dict) else 200
+        if status not in (200, 201):
+            raise UserError(_("BankInPlay no ha anulado el documento %s: %s") % (
+                move_line_id, data))
+        return 'done', _("Anulado en BankInPlay (documento %s).") % document
 
     def _export_document_moves(self, access_data, start_date, journal_ids):
         url = BANKINPLAY_ENDPOINT_V1 + "/documentos-terceros"

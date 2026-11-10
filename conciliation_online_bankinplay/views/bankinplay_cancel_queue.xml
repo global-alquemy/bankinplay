@@ -1,74 +1,77 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
-    <!-- Vista Tree -->
     <record id="bankinplay_cancel_queue_tree" model="ir.ui.view">
         <field name="name">bankinplay.cancel.queue.tree</field>
         <field name="model">bankinplay.cancel.queue</field>
         <field name="arch" type="xml">
-            <tree string="Cola de anulaciones BankinPlay">
+            <tree string="Cola de anulaciones BankInPlay" create="0"
+                  decoration-danger="state == 'error'"
+                  decoration-muted="state in ('skipped', 'not_found')"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'pending'">
+                <header>
+                    <button name="action_process" type="object" string="Procesar ahora"/>
+                    <button name="action_discard" type="object" string="Descartar"
+                            confirm="Los registros seleccionados no se anularán en BankInPlay. ¿Continuar?"/>
+                </header>
                 <field name="create_date" string="Fecha"/>
-                <field name="company_id"/>
-                <field name="move_line_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="move_name"/>
                 <field name="partner_name"/>
-                <field name="state" decoration-success="state == 'done'" decoration-danger="state == 'error'" decoration-warning="state == 'pending'" widget="badge"/>
-                <field name="process_date"/>
+                <field name="move_line_id" optional="hide"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="amount" optional="show"/>
+                <field name="reason"/>
+                <field name="attempts" optional="hide"/>
+                <field name="process_date" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'error'"
+                       decoration-info="state == 'pending'"/>
                 <field name="error_message" optional="hide"/>
             </tree>
         </field>
     </record>
 
-    <!-- Vista Form -->
     <record id="bankinplay_cancel_queue_form" model="ir.ui.view">
         <field name="name">bankinplay.cancel.queue.form</field>
         <field name="model">bankinplay.cancel.queue</field>
         <field name="arch" type="xml">
-            <form string="Anulación BankinPlay">
+            <form string="Anulación BankInPlay" create="0">
                 <header>
-                    <button name="process_cancel_queue" type="object" string="Procesar" class="btn-primary" states="pending,error"/>
-                    <button name="retry_failed" type="object" string="Reintentar" class="btn-secondary" states="error"/>
+                    <button name="action_process" type="object" string="Procesar ahora"
+                            class="btn-primary" attrs="{'invisible': [('state', 'not in', ['pending', 'error'])]}"/>
+                    <button name="action_discard" type="object" string="Descartar"
+                            attrs="{'invisible': [('state', 'not in', ['pending', 'error'])]}"
+                            confirm="Este documento no se anulará en BankInPlay. ¿Continuar?"/>
                     <field name="state" widget="statusbar" statusbar_visible="pending,done"/>
                 </header>
                 <sheet>
                     <group>
                         <group>
-                            <field name="company_id" readonly="1"/>
-                            <field name="move_line_id" readonly="1"/>
+                            <field name="company_id" readonly="1" groups="base.group_multi_company"/>
                             <field name="move_name" readonly="1"/>
                             <field name="partner_name" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount" readonly="1"/>
+                            <field name="move_line_id" readonly="1"/>
                         </group>
                         <group>
-                            <field name="create_date" readonly="1"/>
+                            <field name="reason" readonly="1"/>
+                            <field name="create_date" readonly="1" string="Fecha de alta"/>
                             <field name="process_date" readonly="1"/>
+                            <field name="attempts" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Error" attrs="{'invisible': [('state', '!=', 'error')]}">
-                        <field name="error_message" readonly="1" nolabel="1"/>
+                    <group string="Resultado" attrs="{'invisible': [('error_message', '=', False)]}">
+                        <field name="error_message" readonly="1" nolabel="1" colspan="2"/>
                     </group>
                 </sheet>
             </form>
         </field>
     </record>
 
-    <!-- Action -->
-    <record id="bankinplay_cancel_queue_action" model="ir.actions.act_window">
-        <field name="name">Cola de anulaciones</field>
-        <field name="res_model">bankinplay.cancel.queue</field>
-        <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_pending': 1}</field>
-    </record>
-
-    <!-- Menú: Cola de anulaciones en la sección BankInPlay -->
-    <menuitem
-        id="menu_bip_cancel_queue"
-        name="Cola de anulaciones"
-        parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
-        action="bankinplay_cancel_queue_action"
-        sequence="60"
-        groups="account.group_account_manager"/>
-
-    <!-- Search View -->
     <record id="bankinplay_cancel_queue_search" model="ir.ui.view">
         <field name="name">bankinplay.cancel.queue.search</field>
         <field name="model">bankinplay.cancel.queue</field>
@@ -77,14 +80,46 @@
                 <field name="move_name"/>
                 <field name="partner_name"/>
                 <filter name="pending" string="Pendientes" domain="[('state', '=', 'pending')]"/>
-                <filter name="done" string="Procesados" domain="[('state', '=', 'done')]"/>
                 <filter name="error" string="Con error" domain="[('state', '=', 'error')]"/>
+                <filter name="done" string="Anulados" domain="[('state', '=', 'done')]"/>
+                <filter name="other" string="Sin efecto / no estaban"
+                        domain="[('state', 'in', ('skipped', 'not_found'))]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
-                    <filter name="group_company" string="Empresa" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_reason" string="Motivo" context="{'group_by': 'reason'}"/>
+                    <filter name="group_company" string="Compañía" context="{'group_by': 'company_id'}"/>
                 </group>
             </search>
         </field>
     </record>
 
+    <record id="bankinplay_cancel_queue_action" model="ir.actions.act_window">
+        <field name="name">Cola de anulaciones BankInPlay</field>
+        <field name="res_model">bankinplay.cancel.queue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_pending': 1, 'search_default_error': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay anulaciones pendientes</p>
+            <p>Cuando se borra un apunte de cliente o proveedor que ya se había
+               enviado a BankInPlay, o se cancela su factura, aparece aquí y se
+               anula en BankInPlay automáticamente cada 15 minutos.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_bip_cancel_queue"
+              name="Cola de anulaciones"
+              parent="account_statement_import_online_bankinplay.menu_bankinplay_root"
+              action="bankinplay_cancel_queue_action"
+              sequence="60"/>
+
+    <record id="process_bankinplay_cancel_queue" model="ir.cron">
+        <field name="name">Bankinplay: Procesar cola de anulaciones</field>
+        <field name="model_id" ref="model_bankinplay_cancel_queue"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_pending()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

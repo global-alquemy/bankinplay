@@ -69,6 +69,12 @@ class AccountMoveLine(models.Model):
             })
         return super(AccountMoveLine, self).remove_move_reconcile()
 
+    def unlink(self):
+        # Apunte ya enviado que desaparece (factura borrada, o líneas de
+        # vencimiento regeneradas en borrador): anularlo en BankInPlay.
+        self.env['bankinplay.cancel.queue']._enqueue_lines(self, 'deleted')
+        return super(AccountMoveLine, self).unlink()
+
 
 class AccountMove(models.Model):
     _inherit = "account.move"
@@ -89,6 +95,11 @@ class AccountMove(models.Model):
                     move_lines_to_mark.with_context(skip_bankinplay_tracking=True).write({
                         'bankinplay_needs_update': True
                     })
+
+        # La exportación solo envía apuntes contabilizados: una factura
+        # cancelada hay que anularla en BankInPlay.
+        if vals.get('state') == 'cancel':
+            self.env['bankinplay.cancel.queue']._enqueue_lines(self.mapped('line_ids'), 'cancelled')
 
         return res
 
