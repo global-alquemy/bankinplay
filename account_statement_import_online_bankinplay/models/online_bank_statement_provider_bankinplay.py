@@ -123,6 +123,10 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
         vals_line = {
             "sequence": sequence,
             "date": date,
+            # BankInPlay selecciona por fecha de operación: es la que decide a
+            # qué día (extracto) pertenece aunque la línea lleve la fecha valor.
+            "_bankinplay_period_date": transaction.get("fechaOperacion") and
+            self._bankinplay_datetime_from_string(transaction["fechaOperacion"]),
             "ref": '/',
             "payment_ref": transaction["descripcion"],
             "unique_import_id": str(transaction["id"]),
@@ -131,6 +135,35 @@ class OnlineBankStatementProviderBankInPlay(models.Model):
             "amount": transaction["importeAbsoluto"] * side,
         }
         return vals_line
+
+    def _get_statement_filtered_lines(
+        self, unfiltered_lines, statement_values, statement_date_since, statement_date_until
+    ):
+        """Filtra por día con la hora local que ya calcula el conector.
+
+        OCA trata la fecha de la línea como UTC: filtra por el periodo y la
+        convierte a la zona horaria del proveedor. Las de BankInPlay ya vienen
+        en hora local (y BankInPlay pide los movimientos por día local), así
+        que esa segunda conversión pasaba al día siguiente las operaciones de
+        última hora. Además, con "Fecha valor" el periodo se decide por la
+        fecha de operación, que es por la que BankInPlay los selecciona.
+        """
+        if self.service != "bankinplay":
+            return super()._get_statement_filtered_lines(
+                unfiltered_lines, statement_values,
+                statement_date_since, statement_date_until)
+        line_dates = {}
+        for line in unfiltered_lines:
+            line_dates[id(line)] = line["date"]
+            period_date = line.pop("_bankinplay_period_date", None)
+            if period_date:
+                line["date"] = period_date
+        lines = super()._get_statement_filtered_lines(
+            unfiltered_lines, statement_values,
+            statement_date_since, statement_date_until)
+        for line in lines:
+            line["date"] = line_dates.get(id(line), line["date"])
+        return lines
 
     def _bankinplay_get_card_transaction_vals(self, transaction, sequence):
         """Translate information from BankInPlay to statement line vals."""
