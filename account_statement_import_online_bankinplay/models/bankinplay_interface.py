@@ -166,7 +166,8 @@ class BankinPlayInterface(models.AbstractModel):
                 bankinplay_account.get("num_tarjeta", {})
             )
             check_company = False
-            if bankinplay_card_number == account_number:
+            # el número puede venir con espacios en cualquiera de los dos lados
+            if bankinplay_card_number and bankinplay_card_number == sanitize_account_number(account_number):
                 get_companies = self._get_companies(access_data)
                 for company in get_companies:
                     if company['nif'] == bankinplay_account.get("cif_sociedad", ''):
@@ -202,10 +203,11 @@ class BankinPlayInterface(models.AbstractModel):
             )
         elif isinstance(trans, dict):
             movimientos = trans.get("movimientos", [])
+            card_number = sanitize_account_number(provider_id.bankinplay_card_number or '') or None
             if movimientos:
                 trans = []
                 for movimiento in movimientos:
-                    if movimiento.get('num_tarjeta') == provider_id.bankinplay_card_number:
+                    if sanitize_account_number(movimiento.get('num_tarjeta') or '') == card_number:
                         trans.append(movimiento)
 
         self._log_info(
