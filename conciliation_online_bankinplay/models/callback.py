@@ -19,7 +19,7 @@ class ConciliationCallbackController(http.Controller):
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data, triggered_event='exportacion_conciliacion_terceros')
 
@@ -62,7 +62,7 @@ class ConciliationCallbackController(http.Controller):
             request.httprequest.data.decode(
                 request.httprequest.charset or "utf-8")
         )
-        interface_model = request.env["bankinplay.interface"]
+        interface_model = request.env["bankinplay.interface"].sudo()
         log_entry, desencrypt_data, request_id = interface_model.manage_generic_callback(
             data, triggered_event='asiento_contable')
 

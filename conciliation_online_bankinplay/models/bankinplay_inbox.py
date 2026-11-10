@@ -46,7 +46,7 @@ class BankinplayInboxMixin(models.AbstractModel):
     state = fields.Selection(
         INBOX_STATES, string='Estado', default='waiting',
         required=True, index=True, copy=False)
-    attempts = fields.Integer(string='Intentos', default=0, copy=False)
+    attempts = fields.Integer(string='Nº de intentos', default=0, copy=False)
     last_attempt = fields.Datetime(string='Último intento', copy=False)
     last_error = fields.Text(string='Último error', copy=False)
     log_id = fields.Many2one(

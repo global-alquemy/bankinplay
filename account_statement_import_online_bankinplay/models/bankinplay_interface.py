@@ -103,7 +103,7 @@ class BankinPlayInterface(models.AbstractModel):
             _("`POST` response data %s"), data
         )
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'response',
             # response_data NO se persiste (payload pesado, no se lee en ningún flujo)
             'status': 'success',
@@ -248,12 +248,13 @@ class BankinPlayInterface(models.AbstractModel):
             _("`POST` request to %s with headers %s and params %s and data %s"), url, headers, params, data
         )
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(data),
             #'response_data': json.dumps(data),
             'status': 'success',
-            'notes': json.dumps(headers),
+            # sin la cabecera Authorization: el token no se guarda en el log
+            'notes': json.dumps({k: v for k, v in headers.items() if k != 'Authorization'}),
             # 'response_id': data.get('responseId', ''),
             # 'signature': data.get('signature', ''),
             #'event_data': json.dumps(event_data),
@@ -321,7 +322,7 @@ class BankinPlayInterface(models.AbstractModel):
             decrypted_bytes = unpad(cipher.decrypt(
                 encrypted_bytes), AES.block_size)
             
-            log_entry = self.env['bankinplay.log'].create({
+            log_entry = self.env['bankinplay.log'].sudo().create({
                 'operation_type': 'response',
                 # response_data NO se persiste (payload pesado, no se lee nunca)
                 'status': 'success',
@@ -329,7 +330,7 @@ class BankinPlayInterface(models.AbstractModel):
 
             return json.loads(decrypted_bytes.decode('utf-8'))
         else:
-            log_entry = self.env['bankinplay.log'].create({
+            log_entry = self.env['bankinplay.log'].sudo().create({
                 'operation_type': 'response',
                 # response_data NO se persiste (payload pesado, no se lee nunca)
                 'status': 'success',
@@ -364,7 +365,7 @@ class BankinPlayInterface(models.AbstractModel):
             "access_data": access_data
         }
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
             'status': 'pending',
@@ -397,7 +398,7 @@ class BankinPlayInterface(models.AbstractModel):
             "access_data": access_data
         }
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
             'status': 'pending',
@@ -436,7 +437,7 @@ class BankinPlayInterface(models.AbstractModel):
             "access_data": access_data
         }
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
             'status': 'pending',
@@ -510,7 +511,7 @@ class BankinPlayInterface(models.AbstractModel):
                 'con responseId: %s y signature: %s',
                 response_id, signature,
             )
-            log_entry = self.env['bankinplay.log'].create({
+            log_entry = self.env['bankinplay.log'].sudo().create({
                 'operation_type': 'response',
                 'request_data': '',
                 # response_data NO se persiste (payload cifrado, no se lee nunca)
@@ -534,7 +535,7 @@ class BankinPlayInterface(models.AbstractModel):
         # transacciones y resulta demasiado voluminoso.
         store_desencrypt = evt not in STATEMENT_TRIGGERED_EVENTS
 
-        log_entry = self.env['bankinplay.log'].create({
+        log_entry = self.env['bankinplay.log'].sudo().create({
             'operation_type': 'response',
             'request_data': '',
             'desencrypt_data': desencrypt_data if store_desencrypt else False,

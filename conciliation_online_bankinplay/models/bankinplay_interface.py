@@ -588,7 +588,7 @@ class BankinPlayInterface(models.AbstractModel):
             "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
         }
 
-        self.env['bankinplay.log'].create({
+        self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
             'status': 'pending',
@@ -647,7 +647,7 @@ class BankinPlayInterface(models.AbstractModel):
             "access_data": {k: v for k, v in access_data.items() if k != 'company_id'},
         }
 
-        self.env['bankinplay.log'].create({
+        self.env['bankinplay.log'].sudo().create({
             'operation_type': 'request',
             'request_data': json.dumps(params),
             'status': 'pending',
