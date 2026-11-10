@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 16.0\n"
+"Project-Id-Version: Odoo Server 17.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-17 00:00+0000\n"
-"PO-Revision-Date: 2025-11-17 00:00+0000\n"
+"POT-Creation-Date: 2026-11-10 10:30+0000\n"
+"PO-Revision-Date: 2026-11-10 10:30+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,10 +16,42 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "%d journal(s) skipped (already configured): %s"
+msgstr "%d diario(s) omitido(s) (ya configurados): %s"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "%d provider(s) created"
+msgstr "%d proveedor(es) creado(s)"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "%d provider(s) updated"
+msgstr "%d proveedor(es) actualizado(s)"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "%d transactions present in response data"
 msgstr "%d transacciones presentes en los datos de respuesta"
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Actualizar cada"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Agrupar por"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_res_company__bankinplay_apikey
@@ -33,28 +65,54 @@ msgid "Api Secret"
 msgstr "Clave secreta API"
 
 #. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
-msgid "BankInPlay"
-msgstr "BankInPlay"
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__journal_ids
+msgid "Bank Journals"
+msgstr "Diarios Bancarios"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.ui.menu,name:account_statement_import_online_bankinplay.menu_bankinplay_root
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "BankInPlay"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid ""
+"BankInPlay - %(company)s: la compañía no tiene NIF.\n"
+"\n"
+"BankInPlay identifica la sociedad por su NIF. Añádelo en Ajustes > Usuarios y compañías > Compañías > %(company)s."
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "BankInPlay : no token"
 msgstr "BankInPlay: no hay token"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "BankInPlay : wrong configuration, account %s not found in %s"
-msgstr "BankInPlay: configuración incorrecta, la cuenta %s no se encontró en %s"
+msgstr ""
+"BankInPlay: configuración incorrecta, la cuenta %s no se encontró en %s"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "BankInPlay : wrong configuration, company %s not found in %s"
-msgstr "BankInPlay: configuración incorrecta, la empresa %s no se encontró en %s"
+msgstr ""
+"BankInPlay: configuración incorrecta, la empresa %s no se encontró en %s"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_res_company__bankinplay_company_id
+msgid "BankInPlay Company ID"
+msgstr "ID de la empresa en BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
 #: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_bank_statement_provider_form
@@ -63,10 +121,19 @@ msgid "BankInPlay Config"
 msgstr "Configuración de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "BankInPlay enviará los avisos (%(events)s) a %(url)s."
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/online_bank_statement_provider_bankinplay.py:0
 #, python-format
 msgid "BankInPlay obtain statement data for journal %s from %s to %s"
-msgstr "BankInPlay obtuvo datos de extractos para el diario %s desde %s hasta %s"
+msgstr ""
+"BankInPlay obtuvo datos de extractos para el diario %s desde %s hasta %s"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_online_bank_statement_provider__bankinplay_date_field
@@ -79,19 +146,62 @@ msgid "BankinPlay Import Type"
 msgstr "Tipo de importación de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "Bankinplay Configuration"
+msgstr "Configuración de Bankinplay"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model,name:account_statement_import_online_bankinplay.model_bankinplay_mass_config_wizard
+msgid "Bankinplay Mass Configuration Wizard"
+msgstr "Asistente de Configuración Masiva de Bankinplay"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.actions.server,name:account_statement_import_online_bankinplay.cron_purge_bankinplay_log_ir_actions_server
+msgid "Bankinplay: Purgar histórico de logs"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "Callbacks"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Callbacks registrados"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Callbacks registrados (%d)"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Cancelar"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__bankinplay_import_type__close
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__online_bank_statement_provider__bankinplay_import_type__close
 msgid "Close"
-msgstr "Cerrar"
+msgstr "Cierre"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model,name:account_statement_import_online_bankinplay.model_res_company
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__company_ids
 msgid "Companies"
 msgstr "Compañías"
 
 #. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_res_company__bankinplay_company_id
-msgid "BankInPlay Company ID"
-msgstr "ID de la empresa en BankInPlay"
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__company_id
+msgid "Company"
+msgstr "Compañía"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_res_company__bankinplay_company_id
@@ -99,12 +209,51 @@ msgid "Company ID for BankInPlay."
 msgstr "ID de la empresa para BankInPlay."
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Compañías"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "Comprobar Callbacks"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Configuración Bankinplay"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "Configuración masiva"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Configuración masiva de extractos Bankinplay"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.actions.act_window,name:account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard
+#: model:ir.ui.menu,name:account_statement_import_online_bankinplay.menu_bip_mass_config
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "Configuración masiva extractos"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Configurar"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
 #, python-format
 msgid "Connection Test Failed!"
 msgstr "¡La prueba de conexión falló!"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
 #, python-format
 msgid "Connection Test Succeeded!"
@@ -112,13 +261,20 @@ msgstr "¡Prueba de conexión exitosa!"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__create_uid
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__create_uid
 msgid "Created by"
 msgstr "Creado por"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__create_date
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__create_date
 msgid "Created on"
 msgstr "Creado el"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__bankinplay_date_field
+msgid "Date Field"
+msgstr "Campo de Fecha"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__date_time
@@ -126,19 +282,53 @@ msgid "Datetime"
 msgstr "Fecha y hora"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__daily
+msgid "Day"
+msgstr "Día"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__days
+msgid "Day(s)"
+msgstr "Día(s)"
+
+#. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__desencrypt_data
 msgid "Desencrypt Data"
 msgstr "Desencriptar datos"
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Diarios"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__display_name
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__display_name
 msgid "Display Name"
 msgstr "Nombre para mostrar"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_log__operation_type__error
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_log__status__error
 msgid "Error"
-msgstr "Error"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
+#, python-format
+msgid "Error al obtener callbacks: %s %s"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Error real"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Estado"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__event_data
@@ -146,17 +336,30 @@ msgid "Event Data"
 msgstr "Datos del evento"
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Evento"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
 #, python-format
 msgid "Everything seems properly set up!"
 msgstr "¡Todo parece estar configurado correctamente!"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__bankinplay_date_field__execution_date
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__online_bank_statement_provider__bankinplay_date_field__execution_date
 msgid "Execution Date"
 msgstr "Fecha de ejecución"
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Fecha"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
@@ -164,26 +367,52 @@ msgid "GET request on %s"
 msgstr "Solicitud GET en %s"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "GET request to %s with headers %s and params %s"
 msgstr "Solicitud GET a %s con encabezados %s y parámetros %s"
 
 #. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_bank_statement_provider_form
-msgid "Get keys from company"
-msgstr "Obtener claves de la empresa"
-
-#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "HTTP answer code %s from BankInPlay"
 msgstr "Código de respuesta HTTP %s de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__hours
+msgid "Hour(s)"
+msgstr "Hora(s)"
+
+#. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__id
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__id
 msgid "ID"
-msgstr "ID"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__all_journals
+msgid ""
+"If checked, all bank journals of the selected companies will be configured."
+msgstr ""
+"Si se marca, se configuran todos los diarios bancarios de las compañías seleccionadas."
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__overwrite_existing
+msgid ""
+"If checked, existing Bankinplay providers will be updated with the new "
+"configuration. If unchecked, journals with existing providers will be "
+"skipped."
+msgstr ""
+"Si está marcado, los proveedores de Bankinplay existentes se actualizarán "
+"con la nueva configuración. Si no está marcado, los diarios con proveedores "
+"existentes se omitirán."
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__bankinplay_import_type
+msgid "Import Type"
+msgstr "Tipo de Importación"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model,name:account_statement_import_online_bankinplay.model_bankinplay_interface
@@ -191,6 +420,12 @@ msgid "Interface to all interactions with Bankinplay API"
 msgstr "Interfaz para todas las interacciones con la API de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__interval_type
+msgid "Interval Type"
+msgstr "Intervalo de actualización programada"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__bankinplay_import_type__intraday
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__online_bank_statement_provider__bankinplay_import_type__intraday
 msgid "Intraday"
 msgstr "Intradía"
@@ -201,17 +436,24 @@ msgid "Key for BankInPlay API access."
 msgstr "Clave para acceso a la API de BankInPlay."
 
 #. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log____last_update
-msgid "Last Modified on"
-msgstr "Última modificación el"
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid ""
+"La dirección de Odoo (parámetro del sistema web.base.url) es «%s» y "
+"BankInPlay no puede llegar a ella. Poned la dirección pública de Odoo antes "
+"de registrar los callbacks."
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__write_uid
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__write_uid
 msgid "Last Updated by"
 msgstr "Última actualización por"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__write_date
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__write_date
 msgid "Last Updated on"
 msgstr "Última actualización el"
 
@@ -226,6 +468,38 @@ msgid "Logs de Bankinplay"
 msgstr "Registros de BankInPlay"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__minutes
+msgid "Minute(s)"
+msgstr "Minuto(s)"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__monthly
+msgid "Month"
+msgstr "Mes"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "No bank journals found for the selected companies."
+msgstr "No hay diarios bancarios en las compañías seleccionadas."
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "No changes made"
+msgstr "No se realizaron cambios"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "No hay callbacks registrados en BankInPlay."
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "No transactions where found in data %s"
@@ -239,7 +513,12 @@ msgstr "Notas"
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_online_bank_statement_provider__bankinplay_card_number
 msgid "Número de tarjeta"
-msgstr "Número de tarjeta"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_bank_statement_provider_form
+msgid "Obtener claves de la empresa"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model,name:account_statement_import_online_bankinplay.model_online_bank_statement_provider
@@ -252,10 +531,21 @@ msgid "Operation Type"
 msgstr "Tipo de operación"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__overwrite_existing
+msgid "Overwrite existing providers"
+msgstr "Sobrescribir proveedores existentes"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "POST request on %s"
 msgstr "Solicitud POST en %s"
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Pendiente"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_log__status__pending
@@ -263,21 +553,50 @@ msgid "Pending"
 msgstr "Pendiente"
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Peticiones"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Planificación"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "Please fill login and key."
 msgstr "Por favor, complete el inicio de sesión y la clave."
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
 #, python-format
 msgid "Please provide both the API Key and the API Secret."
 msgstr "Por favor, proporcione tanto la clave API como la clave secreta."
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid "Please select at least one company."
+msgstr "Seleccione al menos una compañía."
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_view_company_form
+msgid "Registrar Callbacks"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
 #: model_terms:ir.actions.act_window,help:account_statement_import_online_bankinplay.action_bankinplay_log
 msgid "Registro de peticiones y respuestas del sistema."
 msgstr "Registro de solicitudes y respuestas del sistema."
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.ui.menu,name:account_statement_import_online_bankinplay.menu_bip_log
+msgid "Registros"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__related_log_id
@@ -310,6 +629,16 @@ msgid "Response ID"
 msgstr "ID de la respuesta"
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Respuestas"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__interval_number
+msgid "Scheduled update interval"
+msgstr "Intervalo de actualización programada"
+
+#. module: account_statement_import_online_bankinplay
 #: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_bank_statement_provider_form
 msgid "Secret Key"
 msgstr "Clave secreta"
@@ -320,11 +649,34 @@ msgid "Secret for BankInPlay API access."
 msgstr "Clave secreta para el acceso a la API de BankInPlay."
 
 #. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_online_bank_statement_provider__bankinplay_date_field
-msgid "Select the Bankinplay date field that will be used for the Odoo bank statement line date. If you change this parameter on a provider that already has transactions, you will have to purge the BankInPlay buffers."
-msgstr "Seleccione el campo de fecha de BankInPlay que se utilizará para la fecha de la línea de extracto bancario de Odoo. Si cambia este parámetro en un proveedor que ya tiene transacciones, deberá purgar los buffers de BankInPlay."
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Seleccionar compañías..."
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
+msgid "Seleccionar diarios bancarios..."
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__all_journals
+msgid "Select all bank journals"
+msgstr "Todos los diarios bancarios"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_online_bank_statement_provider__bankinplay_date_field
+msgid ""
+"Select the Bankinplay date field that will be used for the Odoo bank "
+"statement line date. If you change this parameter on a provider that already"
+" has transactions, you will have to purge the BankInPlay buffers."
+msgstr ""
+"Seleccione el campo de fecha de BankInPlay que se utilizará para la fecha de"
+" la línea de extracto bancario de Odoo. Si cambia este parámetro en un "
+"proveedor que ya tiene transacciones, deberá purgar los buffers de "
+"BankInPlay."
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "Server returned status code %s: %s"
@@ -334,6 +686,24 @@ msgstr "El servidor devolvió el código de estado %s: %s"
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__signature
 msgid "Signature"
 msgstr "Firma"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_log__status__sin_datos
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Sin datos"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
+#, python-format
+msgid "Solo los responsables de contabilidad pueden conectar con BankInPlay."
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__statement_creation_mode
+msgid "Statement Creation Mode"
+msgstr "Modo de Creación de Extractos"
 
 #. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_log__status
@@ -351,12 +721,40 @@ msgid "Test Connection"
 msgstr "Probar Conexión"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/res_company.py:0
 #, python-format
 msgid "The company NIF does not match any of the companies in BankInPlay."
-msgstr "El NIF de la empresa no coincide con ninguna de las empresas en BankInPlay."
+msgstr ""
+"El NIF de la empresa no coincide con ninguna de las empresas en BankInPlay."
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
+#, python-format
+msgid ""
+"The following companies don't have Bankinplay API Key/Secret configured:\n"
+"%s\n"
+"\n"
+"Go to: Settings > Companies > BankInPlay tab"
+msgstr ""
+"Estas compañías no tienen la clave API o la clave secreta de BankInPlay:\n"
+"%s\n"
+"\n"
+"Vaya a: Ajustes > Compañías > pestaña BankInPlay"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__tz
+msgid "Timezone"
+msgstr "Zona Horaria"
+
+#. module: account_statement_import_online_bankinplay
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Tipo de operación"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #, python-format
 msgid "Transaction %s"
@@ -368,12 +766,23 @@ msgid "Triggered Event"
 msgstr "Evento Desencadenado"
 
 #. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__bankinplay_date_field__value_date
 #: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__online_bank_statement_provider__bankinplay_date_field__value_date
 msgid "Value Date"
 msgstr "Fecha de Valor"
 
 #. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__weekly
+msgid "Week"
+msgstr "Semana"
+
+#. module: account_statement_import_online_bankinplay
+#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__weeks
+msgid "Week(s)"
+msgstr "Semana(s)"
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
 #: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
@@ -382,184 +791,25 @@ msgid "`POST` request to %s with headers %s and params %s"
 msgstr "Solicitud `POST` a %s con encabezados %s y parámetros %s"
 
 #. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
+#, python-format
+msgid "`POST` request to %s with headers %s and params %s and data %s"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
+#. odoo-python
+#: code:addons/account_statement_import_online_bankinplay/models/bankinplay_interface.py:0
+#, python-format
+msgid "`POST` response data %s"
+msgstr ""
+
+#. module: account_statement_import_online_bankinplay
 #: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_online_bank_statement_provider__bankinplay_is_card
 msgid "¿Es tarjeta?"
-msgstr "¿Es tarjeta?"
+msgstr ""
 
 #. module: account_statement_import_online_bankinplay
-#: model:ir.model,name:account_statement_import_online_bankinplay.model_bankinplay_mass_config_wizard
-msgid "Bankinplay Mass Configuration Wizard"
-msgstr "Asistente de Configuración Masiva de Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.actions.act_window,name:account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard
-msgid "Configure Bankinplay"
-msgstr "Configurar Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Configure Bankinplay for Multiple Journals"
-msgstr "Configurar Bankinplay para Múltiples Diarios"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__company_id
-msgid "Company"
-msgstr "Compañía"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__journal_ids
-msgid "Bank Journals"
-msgstr "Diarios Bancarios"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Journals"
-msgstr "Diarios"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Select bank journals..."
-msgstr "Seleccionar diarios bancarios..."
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Select All Bank Journals"
-msgstr "Seleccionar Todos los Diarios Bancarios"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__bankinplay_import_type
-msgid "Import Type"
-msgstr "Tipo de Importación"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__bankinplay_date_field
-msgid "Date Field"
-msgstr "Campo de Fecha"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Bankinplay Settings"
-msgstr "Configuración de Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Schedule Settings"
-msgstr "Configuración de Programación"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Update Every"
-msgstr "Actualizar Cada"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__interval_type
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__interval_number
-msgid "Scheduled update interval"
-msgstr "Intervalo de actualización programada"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__statement_creation_mode
-msgid "Statement Creation Mode"
-msgstr "Modo de Creación de Extractos"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__tz
-msgid "Timezone"
-msgstr "Zona Horaria"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,field_description:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__overwrite_existing
-msgid "Overwrite existing providers"
-msgstr "Sobrescribir proveedores existentes"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields,help:account_statement_import_online_bankinplay.field_bankinplay_mass_config_wizard__overwrite_existing
-msgid "If checked, existing Bankinplay providers will be updated with the new configuration. If unchecked, journals with existing providers will be skipped."
-msgstr "Si está marcado, los proveedores de Bankinplay existentes se actualizarán con la nueva configuración. Si no está marcado, los diarios con proveedores existentes se omitirán."
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Configure Selected Journals"
-msgstr "Configurar Diarios Seleccionados"
-
-#. module: account_statement_import_online_bankinplay
-#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.bankinplay_mass_config_wizard_form
-msgid "Cancel"
-msgstr "Cancelar"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "Please configure Bankinplay API Key and Secret in the company settings first.\nGo to: Settings > Companies > Your Company > Bankinplay tab"
-msgstr "Por favor, configure primero la Clave API y el Secreto de Bankinplay en la configuración de la compañía.\nVaya a: Ajustes > Compañías > Su Compañía > Pestaña Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "Please select at least one bank journal."
-msgstr "Por favor, seleccione al menos un diario bancario."
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "%d provider(s) created"
-msgstr "%d proveedor(es) creado(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "%d provider(s) updated"
-msgstr "%d proveedor(es) actualizado(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "%d journal(s) skipped (already configured): %s"
-msgstr "%d diario(s) omitido(s) (ya configurados): %s"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "No changes made"
-msgstr "No se realizaron cambios"
-
-#. module: account_statement_import_online_bankinplay
-#: code:addons/account_statement_import_online_bankinplay/wizard/bankinplay_mass_config_wizard.py:0
-#, python-format
-msgid "Bankinplay Configuration"
-msgstr "Configuración de Bankinplay"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__minutes
-msgid "Minute(s)"
-msgstr "Minuto(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__hours
-msgid "Hour(s)"
-msgstr "Hora(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__days
-msgid "Day(s)"
-msgstr "Día(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__interval_type__weeks
-msgid "Week(s)"
-msgstr "Semana(s)"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__daily
-msgid "Day"
-msgstr "Día"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__weekly
-msgid "Week"
-msgstr "Semana"
-
-#. module: account_statement_import_online_bankinplay
-#: model:ir.model.fields.selection,name:account_statement_import_online_bankinplay.selection__bankinplay_mass_config_wizard__statement_creation_mode__monthly
-msgid "Month"
-msgstr "Mes"
+#: model_terms:ir.ui.view,arch_db:account_statement_import_online_bankinplay.view_bankinplay_log_search
+msgid "Éxito"
+msgstr ""
