@@ -494,6 +494,27 @@ class BankinPlayInterface(models.AbstractModel):
 
         return True
 
+    def _register_callback(self, access_data, event, target):
+        """Registra un callback en BankInPlay para un evento."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        params = {
+            "event": event,
+            "target": target
+        }
+        return self._post_request(access_data, url, {}, json.dumps(params))
+
+    def _get_callbacks(self, access_data):
+        """Obtiene los callbacks registrados en BankInPlay."""
+        url = BANKINPLAY_ENDPOINT_V1 + "/callback"
+        headers = self._get_request_headers(access_data)
+        response = requests.get(url, headers=headers)
+        if response.status_code not in (200, 201):
+            raise UserError(
+                _("Error al obtener callbacks: %s %s")
+                % (response.status_code, response.text)
+            )
+        return json.loads(response.text)
+
     def _bankinplay_callback_keys(self, event_data):
         """Claves para descifrar el callback de una petición.
 

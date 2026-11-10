@@ -209,57 +209,12 @@ class ResCompany(models.Model):
         interface_model = self.env["bankinplay.interface"]
         interface_model._export_account_move_lines(access_data)
 
-    def bankinplay_register_callbacks(self):
-        """Registra los callbacks de conciliación y asientos en BankInPlay."""
-        access_data = self.check_bankinplay_connection()
-        interface_model = self.env["bankinplay.interface"]
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-
-        callbacks = [
-            ("exportacion_conciliacion_terceros", base_url + "/webhook/conciliacionTerceros"),
-            ("asiento_contable", base_url + "/webhook/asientoContable"),
-            ("lectura_cierre", base_url + "/webhook/lectura_cierre"),
-            ("lectura_intradia", base_url + "/webhook/lectura_intradia"),
-            ("lectura_tarjeta", base_url + "/webhook/lectura_tarjeta"),
-        ]
-        for event, target in callbacks:
-            interface_model._register_callback(access_data, event, target)
-            if interface_model._bankinplay_logging_enabled():
-                _logger.info("Callback registrado: %s -> %s", event, target)
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _("Callbacks registrados"),
-                'message': _("Se han registrado los callbacks de conciliación terceros y asientos contables en BankInPlay."),
-                'sticky': False,
-            }
-        }
-
-    def bankinplay_check_callbacks(self):
-        """Consulta los callbacks registrados en BankInPlay y los muestra."""
-        access_data = self.check_bankinplay_connection()
-        interface_model = self.env["bankinplay.interface"]
-        callbacks = interface_model._get_callbacks(access_data)
-
-        if not callbacks:
-            message = _("No hay callbacks registrados en BankInPlay.")
-        else:
-            lines = []
-            for cb in callbacks:
-                lines.append("• %s → %s" % (cb.get('tipo', ''), cb.get('target', '')))
-            message = "\n".join(lines)
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _("Callbacks registrados (%d)") % len(callbacks),
-                'message': message,
-                'sticky': True,
-            }
-        }
+    def _bankinplay_callback_events(self):
+        """Además de los extractos, la conciliación de terceros y los asientos."""
+        return [
+            ("exportacion_conciliacion_terceros", "/webhook/conciliacionTerceros"),
+            ("asiento_contable", "/webhook/asientoContable"),
+        ] + super()._bankinplay_callback_events()
 
     @api.model
     def _bankinplay_enable_job_commit(self):

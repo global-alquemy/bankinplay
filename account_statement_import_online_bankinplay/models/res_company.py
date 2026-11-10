@@ -1,10 +1,12 @@
 # 2024 Alquemy - José Antonio Fernández Valls <jafernandez@alquemy.es>
 # 2024 Alquemy - Javier de las Heras Gómez <jheras@alquemy.es>
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
+import ipaddress
 import json
 import logging
 import re
 from datetime import datetime
+from urllib.parse import urlparse
 
 import pytz
 
@@ -93,4 +95,73 @@ class ResCompany(models.Model):
                 'message': message,
                 'sticky': False,
             }
+        }
+
+    # CALLBACKS: direcciones de Odoo a las que BankInPlay envía los avisos
+
+    def _bankinplay_callback_events(self):
+        """Eventos de BankInPlay que llegan a Odoo por webhook y su ruta."""
+        return [
+            ("lectura_cierre", "/webhook/lectura_cierre"),
+            ("lectura_intradia", "/webhook/lectura_intradia"),
+            ("lectura_tarjeta", "/webhook/lectura_tarjeta"),
+        ]
+
+    def _bankinplay_public_url(self):
+        """Dirección de Odoo que se registra en BankInPlay (web.base.url)."""
+        base_url = (self.env["ir.config_parameter"].sudo().get_param("web.base.url") or "").rstrip("/")
+        host = urlparse(base_url).hostname or ""
+        try:
+            ip = ipaddress.ip_address(host)
+            unreachable = ip.is_loopback or ip.is_private or ip.is_unspecified
+        except ValueError:
+            unreachable = not host or host == "localhost"
+        if unreachable:
+            raise UserError(_(
+                "La dirección de Odoo (parámetro del sistema web.base.url) es «%s» y "
+                "BankInPlay no puede llegar a ella. Poned la dirección pública de Odoo "
+                "antes de registrar los callbacks.") % base_url)
+        return base_url
+
+    def bankinplay_register_callbacks(self):
+        """Registra en BankInPlay las direcciones de Odoo para sus avisos."""
+        access_data = self.check_bankinplay_connection()
+        base_url = self._bankinplay_public_url()
+        interface_model = self.env["bankinplay.interface"]
+        events = self._bankinplay_callback_events()
+        for event, path in events:
+            interface_model._register_callback(access_data, event, base_url + path)
+            if interface_model._bankinplay_logging_enabled():
+                _logger.info("Callback registrado: %s -> %s", event, base_url + path)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Callbacks registrados"),
+                "message": _("BankInPlay enviará los avisos (%(events)s) a %(url)s.") % {
+                    "events": ", ".join(event for event, _path in events),
+                    "url": base_url,
+                },
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
+    def bankinplay_check_callbacks(self):
+        """Consulta los callbacks registrados en BankInPlay y los muestra."""
+        access_data = self.check_bankinplay_connection()
+        callbacks = self.env["bankinplay.interface"]._get_callbacks(access_data)
+        if not callbacks:
+            message = _("No hay callbacks registrados en BankInPlay.")
+        else:
+            message = "\n".join(
+                "• %s → %s" % (cb.get("tipo", ""), cb.get("target", "")) for cb in callbacks)
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Callbacks registrados (%d)") % len(callbacks),
+                "message": message,
+                "sticky": True,
+            },
         }

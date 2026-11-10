@@ -16,7 +16,11 @@
                                 <button name="test_bankinplay_connection" colspan="2" type="object" string="Test Connection" icon="fa-television" class="btn-primary w-100 mb-2"/>
                             </group>
                             <group name="bankinplay_config">
-                                
+                                <separator string="Callbacks" colspan="2"/>
+                                <button name="bankinplay_register_callbacks" type="object" string="Registrar Callbacks" icon="fa-link" class="btn-warning w-100 mb-1" colspan="2"/>
+                                <button name="bankinplay_check_callbacks" type="object" string="Comprobar Callbacks" icon="fa-check-circle" class="btn-info w-100 mb-1" colspan="2"/>
+                                <separator string="Configuración masiva" colspan="2"/>
+                                <button name="%(account_statement_import_online_bankinplay.action_bankinplay_mass_config_wizard)d" type="action" string="Configuración masiva extractos" icon="fa-cogs" class="btn-secondary w-100 mb-1" colspan="2"/>
                             </group>
                         </group>
                         <group name="bankinplay-col2">
