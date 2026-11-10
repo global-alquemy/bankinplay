@@ -361,8 +361,7 @@ class BankinPlayInterface(models.AbstractModel):
             "event": "lectura_intradia",
             "date_since": date_since.strftime("%Y/%m/%d"),
             "date_until": date_until.strftime("%Y/%m/%d"),
-            "provider_id": provider_id.id,
-            "access_data": access_data
+            "provider_id": provider_id.id
         }
 
         log_entry = self.env['bankinplay.log'].sudo().create({
@@ -394,8 +393,7 @@ class BankinPlayInterface(models.AbstractModel):
             "event": "lectura_cierre",
             "date_since": date_since.strftime("%Y/%m/%d"),
             "date_until": date_until.strftime("%Y/%m/%d"),
-            "provider_id": provider_id.id,
-            "access_data": access_data
+            "provider_id": provider_id.id
         }
 
         log_entry = self.env['bankinplay.log'].sudo().create({
@@ -433,8 +431,7 @@ class BankinPlayInterface(models.AbstractModel):
             "event": "lectura_tarjeta",
             "date_since": date_since.strftime("%Y/%m/%d"),
             "date_until": date_until.strftime("%Y/%m/%d"),
-            "provider_id": provider_id.id,
-            "access_data": access_data
+            "provider_id": provider_id.id
         }
 
         log_entry = self.env['bankinplay.log'].sudo().create({
@@ -497,6 +494,29 @@ class BankinPlayInterface(models.AbstractModel):
 
         return True
 
+    def _bankinplay_callback_keys(self, event_data):
+        """Claves para descifrar el callback de una petición.
+
+        Las peticiones no guardan las credenciales en el registro: se leen del
+        proveedor (extractos, que entra con sus propias claves) o de la
+        compañía (terceros y asientos). Las peticiones anteriores a este cambio
+        aún las traen en ``access_data``.
+        """
+        if event_data.get('access_data'):
+            return event_data['access_data']
+        if event_data.get('provider_id'):
+            provider = self.env['online.bank.statement.provider'].sudo().browse(
+                event_data['provider_id']).exists()
+            if provider:
+                return {'user': provider.username, 'pass': provider.password}
+        if event_data.get('company_id'):
+            company = self.env['res.company'].sudo().browse(
+                event_data['company_id']).exists()
+            if company:
+                return {'user': company.bankinplay_apikey,
+                        'pass': company.bankinplay_apisecret}
+        return {}
+
     def manage_generic_callback(self, data, triggered_event=False):
         signature = data.get('signature')
         response_id = data.get('responseId')
@@ -524,7 +544,7 @@ class BankinPlayInterface(models.AbstractModel):
             return log_entry, {}, request_id
 
         event_data = json.loads(request_id.event_data)
-        access_data = event_data.get('access_data')
+        access_data = self._bankinplay_callback_keys(event_data)
 
         desencrypt_data = self._desencrypt_data(
             data, access_data)
