@@ -20,7 +20,10 @@ class BankinplayLog(models.Model):
 
     response_id = fields.Char(string='Response ID')
 
-    signature = fields.Char(string='Signature')
+    # Con response_id, es lo que autentica el webhook: solo responsables.
+    signature = fields.Char(
+        string='Signature',
+        groups='account.group_account_manager,base.group_system')
 
     related_log_id = fields.Many2one(
         'bankinplay.log', string='Related Bankinplay Log')
@@ -30,7 +33,9 @@ class BankinplayLog(models.Model):
     request_data = fields.Text(string='Request Data')
     response_data = fields.Text(string='Response Data')
     desencrypt_data = fields.Text(string='Desencrypt Data')
-    event_data = fields.Text(string='Event Data')
+    event_data = fields.Text(
+        string='Event Data',
+        groups='account.group_account_manager,base.group_system')
     status = fields.Selection([
         ('success', 'Success'),
         ('error', 'Error'),

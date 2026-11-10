@@ -10,7 +10,7 @@ import pytz
 
 from odoo import _, api, fields, models
 from odoo.tools import ustr
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -37,6 +37,14 @@ class ResCompany(models.Model):
 
     def check_bankinplay_connection(self):
         self.ensure_one()
+        # Conecta con las claves de la compañía y es un método público (RPC):
+        # solo responsables de contabilidad, administradores o el sistema
+        # (crons y jobs del sistema).
+        user = self.env.user
+        if not (self.env.su or user.has_group('account.group_account_manager')
+                or user.has_group('base.group_system')):
+            raise AccessError(_(
+                "Solo los responsables de contabilidad pueden conectar con BankInPlay."))
         # BankInPlay identifica la sociedad por su NIF en todas las llamadas.
         if not self.vat:
             raise UserError(_(
@@ -44,15 +52,12 @@ class ResCompany(models.Model):
                 "BankInPlay identifica la sociedad por su NIF. Añádelo en "
                 "Ajustes > Usuarios y compañías > Compañías > %(company)s.",
                 company=self.name))
-        # Las claves solo las ven los responsables; aquí se leen con sudo para
-        # que los procesos lanzados por otros usuarios puedan conectar.
-        company_sudo = self.sudo()
-        if not company_sudo.bankinplay_apikey or not company_sudo.bankinplay_apisecret:
+        if not self.bankinplay_apikey or not self.bankinplay_apisecret:
             raise UserError(
                 _("Please provide both the API Key and the API Secret."))
         interface_model = self.env["bankinplay.interface"]
         access_data = interface_model._login(
-            company_sudo.bankinplay_apikey, company_sudo.bankinplay_apisecret)
+            self.bankinplay_apikey, self.bankinplay_apisecret)
         if not access_data:
             raise UserError(_("Connection Test Failed!"))
 
